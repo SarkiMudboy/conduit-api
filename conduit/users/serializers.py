@@ -1,12 +1,13 @@
-from typing import Dict, Optional, Required
-from rest_framework import serializers
-from django.contrib.auth import authenticate
-from rest_framework.exceptions import ValidationError
+from typing import Dict, Optional
 
 from abstract.utils import parse_querydict
-from .models import User
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth import authenticate
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from .models import User
+
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -14,33 +15,24 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = [
-            "uid",
-            "email",
-            "password",
-            "tag",
-            "avatar"
-        ]
+        fields = ["uid", "email", "password", "tag", "avatar"]
         read_only_fields = ["uid"]
-        extra_kwargs = {
-            "tag": {"required": False},
-            "password": {"write_only": True}
-        }
+        extra_kwargs = {"tag": {"required": False}, "password": {"write_only": True}}
 
     def validate_tag(self, tag: str) -> str:
         if not tag or User.objects.filter(tag=tag).exists():
             raise ValidationError("User with tag already exists")
-        
+
         return tag
 
     def create(self, validated_data: Dict[str, str]) -> User:
         password = validated_data.pop("password")
         user = User.objects.create_user(password=password, **validated_data)
         return user
-    
+
     def get_avatar(self, user: User) -> Optional[str]:
         return user.avatar or None
-    
+
     def to_internal_value(self, data):
         data = parse_querydict(data)
         if data.get("tag", None) == "":
@@ -57,12 +49,7 @@ class LoginSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = [
-            "email",
-            "tag",
-            "password",
-            "token"
-        ]
+        fields = ["email", "tag", "password", "token"]
 
     def validate(self, attrs: Dict[str, str]) -> Dict[str, str]:
 
@@ -72,23 +59,34 @@ class LoginSerializer(serializers.ModelSerializer):
 
         if not user:
             raise ValidationError("email/tag or password in not valid")
-        
+
         attrs["user"] = user
         return attrs
-    
+
     def get_token(self, data: Dict[str, str]) -> Dict[str, str]:
-        
+
         user = data.get("user")
         token = RefreshToken.for_user(user)
-        return {
-            "refresh": str(token),
-            "access": str(token.access_token)
-        }
-    
+        return {"refresh": str(token), "access": str(token.access_token)}
+
 
 class LogoutSerializer(serializers.ModelSerializer):
-    
+
     refresh = serializers.CharField(required=True)
 
     class Meta:
         model = User
+
+
+class PasswordResetSerializer(serializers.ModelSerializer):
+
+    token = serializers.ReadOnlyField(source="get_email_token")
+    email = serializers.EmailField(required=True)
+
+    class Meta:
+        model = User
+        fields = ["email", "token"]
+
+    def send_password_reset_mail(self) -> None:
+        user = self.instance
+        user.send_password_reset_mail_with_otp()

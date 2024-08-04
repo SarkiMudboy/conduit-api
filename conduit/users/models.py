@@ -7,7 +7,6 @@ from abstract.services.email.clients import EmailClient
 from abstract.services.email.types import EmailData
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.core.signing import TimestampSigner
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -56,15 +55,10 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
 
         EmailClient.send(email_data)
 
-    def get_email_token(self) -> str:
-        signer = TimestampSigner()
-        email_token = signer.sign(self.email)
-        return email_token
-
 
 class OTP(TimestampUUIDMixin):
 
-    owner = models.ForeignKey(User, related_name="otp", on_delete=models.CASCADE)
+    owner = models.OneToOneField(User, related_name="otp", on_delete=models.CASCADE)
     otp = models.CharField(max_length=6, blank=True, null=True)
     expiry = models.DateTimeField()
     claimed = models.BooleanField(default=False)

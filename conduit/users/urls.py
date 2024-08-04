@@ -12,12 +12,22 @@ from .views import (
 router = DefaultRouter()
 router.register("", UserRetrieveUpdateDestroyView, basename="users")
 
+request_password_reset = PasswordView.as_view({"get": "request_password_reset"})
+
+confirm_otp = PasswordView.as_view({"post": "confirm_otp"})
+
+reset_password = PasswordView.as_view({"put": "reset_password"})
+
 urlpatterns = [
     path("sign-up/", SignUpView.as_view(), name="sign-up"),
     path("sign-in/", SigninView.as_view(), name="sign-in"),
     path("sign-out/", SignOutView.as_view(), name="sign-out"),
     # password recovery
-    path("reset-password/", PasswordView.as_view(), name="request-reset-password"),
+    path(
+        "request-reset-password/", request_password_reset, name="request-reset-password"
+    ),
+    path("confirm-reset-password/", confirm_otp, name="confirm-reset-password"),
+    path("reset-password/", reset_password, name="reset-password"),
 ]
 
 urlpatterns += router.urls

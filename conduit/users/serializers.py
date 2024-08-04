@@ -2,11 +2,14 @@ from typing import Dict, Optional
 
 from abstract.utils import parse_querydict
 from django.contrib.auth import authenticate
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User
+from .models import OTP, User
+from .utils import get_email_token
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -80,13 +83,68 @@ class LogoutSerializer(serializers.ModelSerializer):
 
 class PasswordResetSerializer(serializers.ModelSerializer):
 
-    token = serializers.ReadOnlyField(source="get_email_token")
+    token = serializers.SerializerMethodField()
     email = serializers.EmailField(required=True)
 
     class Meta:
         model = User
         fields = ["email", "token"]
 
+    def get_token(self, user):
+        return get_email_token(user.email)
+
     def send_password_reset_mail(self) -> None:
         user = self.instance
         user.send_password_reset_mail_with_otp()
+
+
+class ConfirmOTPSerializer(serializers.ModelSerializer):
+
+    token = serializers.CharField(max_length=300)
+    otp = serializers.CharField(max_length=6, write_only=True)
+
+    class Meta:
+        model = OTP
+        fields = ["otp", "token"]
+
+    def validate(self, attrs: Dict[str, str]) -> Dict[str, str]:
+
+        otp_obj = self.instance
+        otp_str = attrs.pop("otp")
+
+        if timezone.now() > otp_obj.expiry:
+            raise serializers.ValidationError("OTP has expired")
+        if otp_str != otp_obj.otp:
+            raise serializers.ValidationError("Invalid OTP")
+
+        return attrs
+
+    def update(self, otp, validated_data: Dict[str, str]) -> OTP:
+        otp.claimed = True
+        otp.save()
+        return otp
+
+
+class ChangePasswordSerializer(serializers.ModelSerializer):
+
+    password = serializers.CharField(max_length=2000, required=True, write_only=True)
+
+    class Meta:
+        model = User
+        fields = ["password"]
+
+    def validate(self, attrs):
+        otp = self.instance.otp
+        if not otp.claimed:
+            raise serializers.ValidationError("Please confirm your OTP first")
+
+        attrs["otp"] = otp
+        return attrs
+
+    def update(self, user, validated_data: Dict[str, str]) -> AbstractBaseUser:
+        user.set_password(validated_data.get("password"))
+        user.save()
+        otp = validated_data.pop("otp", None)
+        if otp:
+            otp.delete()
+        return user

@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.http.request import HttpRequest
-from django.http.response import Http404, HttpResponse
+from django.http.response import Http404, HttpResponse, HttpResponseBadRequest
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import status
 from rest_framework.mixins import (
@@ -14,11 +14,14 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (
+    ChangePasswordSerializer,
+    ConfirmOTPSerializer,
     LoginSerializer,
     LogoutSerializer,
     PasswordResetSerializer,
     UserSerializer,
 )
+from .utils import retrieve_email_from_token
 
 User = get_user_model()
 
@@ -113,25 +116,53 @@ class SignOutView(generics.GenericAPIView):
 
 
 # password recovery
-class PasswordView(generics.GenericAPIView):
+class PasswordView(viewsets.GenericViewSet):
 
     serializer_class = PasswordResetSerializer
     queryset = User.objects.filter(is_active=True)
     permission_classes = [AllowAny]
 
     def get_object(self):
-        email = self.request.data.get("email", None)
+
+        email = None
+        token = self.request.data.get("token", None)
+
+        if token:
+            email = retrieve_email_from_token(token) if token else None
+            if not email:
+                raise HttpResponseBadRequest()
+        else:
+            email = self.request.data.get("email", None)
+
         user = self.queryset.filter(email=email).first()
         if not user:
             raise Http404("User not found")
         return user
 
-    def get(self, request, *args, **kwargs):
+    def get_otp(self):
+        user = self.get_object()
+        otp = user.otp
+        if not otp:
+            raise Http404("OTP for user does not exist")
+        return otp
+
+    def request_password_reset(self, request, *args, **kwargs):
         user = self.get_object()
         serializer = self.serializer_class(user, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.send_password_reset_mail()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        ...
+    def confirm_otp(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        otp = self.get_otp()
+        serializer = ConfirmOTPSerializer(otp, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+
+    def reset_password(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        user = self.get_object()
+        serializer = ChangePasswordSerializer(user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)

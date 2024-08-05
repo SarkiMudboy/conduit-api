@@ -40,6 +40,13 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
         return tag
 
     def send_password_reset_mail_with_otp(self):
+
+        try:
+            otp = self.otp
+            otp.delete()
+        except OTP.DoesNotExist:
+            pass
+
         token = OTP.objects.create(
             owner=self, expiry=timezone.now() + timezone.timedelta(minutes=10)
         )

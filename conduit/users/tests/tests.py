@@ -1,12 +1,14 @@
-from typing import Any, Tuple, Union
-from django.contrib.auth.models import AbstractBaseUser
-from django.test import TestCase
-from typing import Dict
+from typing import Any, Dict
+from unittest.mock import patch
+
 import pytest
-from rest_framework.test import APIClient
-from faker import Factory as FakerFactory
-from .factory import UserFactory
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractBaseUser
+from faker import Factory as FakerFactory
+from rest_framework.test import APIClient
+
+from ..models import OTP
+from .factory import UserFactory
 
 User: AbstractBaseUser = get_user_model()
 faker = FakerFactory.create()
@@ -16,26 +18,25 @@ ENDPOINTS = {
     "sign-in": "/api/v1/users/sign-in/",
     "sign-out": "/api/v1/users/sign-out/",
     "refresh": "/api/token/refresh/",
-    "users": "/api/v1/users/"
+    "users": "/api/v1/users/",
+    # password recovery
+    "request-password-reset": "/api/v1/users/request-reset-password/",
+    "confirm": "/api/v1/users/confirm-reset-password/",
+    "reset-password": "/api/v1/users/reset-password/",
 }
+
 
 @pytest.fixture(scope="function")
 def tokens() -> Dict[str, Any]:
     """Helper function for logging in and getting tokens"""
-    
+
     conduit_user = UserFactory.create()
     client = APIClient()
-    data = {
-        "email": conduit_user.email,
-        "password": "its-a-secret" 
-    }
+    data = {"email": conduit_user.email, "password": "its-a-secret"}
     response = client.post(ENDPOINTS["sign-in"], data)
     response_data = response.json()
-    
-    return {
-        "user": conduit_user,
-        "tokens": response_data["token"]
-    }
+
+    return {"user": conduit_user, "tokens": response_data["token"]}
 
 
 @pytest.mark.django_db
@@ -45,20 +46,17 @@ class TestUserAuthAPI:
 
     def test_user_can_sign_up(self, client):
 
-        user = {
-            "email": "test-sample@email.com",
-            "password": "testypasswords"
-        }
+        user = {"email": "test-sample@email.com", "password": "testypasswords"}
 
         response = client.post(ENDPOINTS["sign-up"], data=user)
         assert response.status_code == 201
-        assert User.objects.filter(email=user["email"]).exists() == True
+        assert User.objects.filter(email=user["email"]).exists() is True
 
     def test_user_can_sign_up_with_tag(self, client):
         user = {
             "email": "test-sample@email.com",
             "tag": "testtye345",
-            "password": "testypasswords"
+            "password": "testypasswords",
         }
 
         response = client.post(ENDPOINTS["sign-up"], data=user)
@@ -72,10 +70,7 @@ class TestUserAuthAPI:
         assert user.tag == response_data.get("tag")
 
     def test_tag_is_generated_if_not_provided_during_sign_up(self, client):
-        user = {
-            "email": "test-sample@email.com",
-            "password": "testypasswords"
-        }
+        user = {"email": "test-sample@email.com", "password": "testypasswords"}
 
         response = client.post(ENDPOINTS["sign-up"], data=user)
         assert response.status_code == 201
@@ -92,22 +87,19 @@ class TestUserAuthAPI:
 
     def test_user_cannot_sign_up_with_invalid_details(self, client):
         user = {
-            "email": "test-sampleemail.com", # wrong email format
+            "email": "test-sampleemail.com",  # wrong email format
             "tag": "",
-            "password": "testypasswords"
+            "password": "testypasswords",
         }
 
         response = client.post(ENDPOINTS["sign-up"], data=user)
         assert response.status_code == 400
-        assert User.objects.filter(email=user["email"]).exists() == False
+        assert User.objects.filter(email=user["email"]).exists() is False
 
     def test_tags_and_email_are_unique(self, user_factory, client):
         conduit_user = user_factory.create()
 
-        user = {
-            "email": conduit_user.email,
-            "password": "testypasswords"
-        }
+        user = {"email": conduit_user.email, "password": "testypasswords"}
 
         response = client.post(ENDPOINTS["sign-up"], data=user)
         assert response.status_code == 400
@@ -136,7 +128,7 @@ class TestUserAuthAPI:
             "email": invalid_email,
             "password": "its-a-secret",
         }
-        
+
         response = client.post(ENDPOINTS["sign-in"], data=user)
         assert response.status_code == 400
 
@@ -172,25 +164,25 @@ class TestUserAuthAPI:
         assert "access" in token.keys()
         assert "refresh" in token.keys()
 
-    
     def test_user_can_sign_out(self, client, tokens):
 
         token = tokens["tokens"]
-        response = client.post(ENDPOINTS["sign-out"], data={"refresh": token.get('refresh')})
+        response = client.post(
+            ENDPOINTS["sign-out"], data={"refresh": token.get("refresh")}
+        )
         assert response.status_code == 204
 
     def test_refresh_token_blacklisted_upon_sign_out(self, client, tokens):
         token = tokens["tokens"]
-        response = client.post(ENDPOINTS["sign-out"], data={"refresh": token.get('refresh')})
+        response = client.post(
+            ENDPOINTS["sign-out"], data={"refresh": token.get("refresh")}
+        )
         assert response.status_code == 204
 
         # refresh is invalid
-        headers = {
-            "Authorization": f"Bearer {token.get('access')}"
-        }
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
         response = client.post(ENDPOINTS["refresh"], headers=headers)
         assert response.status_code == 400
-
 
 
 @pytest.mark.django_db
@@ -202,48 +194,138 @@ class TestUserAPI:
 
         conduit_user = tokens["user"]
         token = tokens["tokens"]
-        
-        headers = {
-            "Authorization": f"Bearer {token.get('access')}"
-        }
-        response = client.get(ENDPOINTS["users"] + f"{conduit_user.uid}/", headers=headers)
+
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.get(
+            ENDPOINTS["users"] + f"{conduit_user.uid}/", headers=headers
+        )
         assert response.status_code == 200
 
         response_data = response.json()
-        
-        assert response_data['email'] == conduit_user.email
-        assert response_data['tag'] == conduit_user.tag
-    
+
+        assert response_data["email"] == conduit_user.email
+        assert response_data["tag"] == conduit_user.tag
+
     def test_user_can_modify_profile(self, client, tokens):
 
         conduit_user = tokens["user"]
         token = tokens["tokens"]
-        data = {'tag': 'newuser123'}
-        headers = {
-            "Authorization": f"Bearer {token.get('access')}"
-        }
-        
+        data = {"tag": "newuser123"}
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+
         response = client.patch(
-            ENDPOINTS["users"] + f"{conduit_user.uid}/", 
-            data=data, 
+            ENDPOINTS["users"] + f"{conduit_user.uid}/",
+            data=data,
             headers=headers,
-            content_type="application/json"
-            )
+            content_type="application/json",
+        )
 
         assert response.status_code == 200
         conduit_user.refresh_from_db()
         response_data = response.json()
-        assert response_data['tag'] == 'newuser123'
+        assert response_data["tag"] == "newuser123"
 
     def test_user_can_delete_profile(self, client, tokens):
 
         conduit_user = tokens["user"]
         token = tokens["tokens"]
-        
-        headers = {
-            "Authorization": f"Bearer {token.get('access')}"
-        }
-        response = client.delete(ENDPOINTS["users"] + f"{conduit_user.uid}/", headers=headers)
+
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.delete(
+            ENDPOINTS["users"] + f"{conduit_user.uid}/", headers=headers
+        )
         assert response.status_code == 204
 
-        assert User.objects.filter(uid=conduit_user.uid).exists() == False
+        assert User.objects.filter(uid=conduit_user.uid).exists() is False
+
+
+@pytest.mark.django_db
+class TestPasswordRecoveryAPI:
+
+    client = APIClient()
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_user_can_request_password_reset(
+        self, mock_stmp_mail, user_factory, client
+    ):
+
+        conduit_user = user_factory.create()
+        data = dict(email=conduit_user.email)
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+
+    def test_invalid_email_returns_404(self, user_factory, client):
+
+        user_factory.create()
+        data = dict(email="new@exxample.com")
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 404
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_email_token_is_returned_in_response(
+        self, mock_stmp_mail, user_factory, client
+    ):
+
+        conduit_user = user_factory.create()
+        data = dict(email=conduit_user.email)
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+
+        response_data = response.json()
+        assert "token" in response_data.keys()
+        assert response_data["token"].startswith(conduit_user.email) is True
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_mail_is_sent_upon_password_reset_request(
+        self, mock_stmp_mail, user_factory, client
+    ):
+        conduit_user = user_factory.create()
+        data = dict(email=conduit_user.email)
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        mock_stmp_mail.assert_called_once()
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_otp_generated_upon_successful_password_request(
+        self, mock_stmp_mail, user_factory, client
+    ):
+
+        conduit_user = user_factory.create()
+        data = dict(email=conduit_user.email)
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        assert OTP.objects.filter(owner=conduit_user).exists() is True
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_correct_otp_is_sent_in_mail(self, mock_stmp_mail, user_factory, client):
+        conduit_user = user_factory.create()
+        data = dict(email=conduit_user.email)
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        conduit_user.refresh_from_db()
+        password = conduit_user.otp
+        assert password.otp in mock_stmp_mail.call_args[0][0][1]

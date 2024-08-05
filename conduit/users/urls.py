@@ -12,7 +12,7 @@ from .views import (
 router = DefaultRouter()
 router.register("", UserRetrieveUpdateDestroyView, basename="users")
 
-request_password_reset = PasswordView.as_view({"get": "request_password_reset"})
+request_password_reset = PasswordView.as_view({"post": "request_password_reset"})
 
 confirm_otp = PasswordView.as_view({"post": "confirm_otp"})
 

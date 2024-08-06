@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from datetime import timedelta
+from typing import Any, Dict, Optional
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +9,8 @@ from faker import Factory as FakerFactory
 from rest_framework.test import APIClient
 
 from ..models import OTP
-from .factory import UserFactory
+from ..utils import get_email_token
+from .factory import OTPFactory, UserFactory
 
 User: AbstractBaseUser = get_user_model()
 faker = FakerFactory.create()
@@ -27,16 +29,30 @@ ENDPOINTS = {
 
 
 @pytest.fixture(scope="function")
-def tokens() -> Dict[str, Any]:
+def tokens(conduit_user: Optional[AbstractBaseUser] = None) -> Dict[str, Any]:
     """Helper function for logging in and getting tokens"""
 
-    conduit_user = UserFactory.create()
+    if not conduit_user:
+        conduit_user = UserFactory.create()
     client = APIClient()
     data = {"email": conduit_user.email, "password": "its-a-secret"}
     response = client.post(ENDPOINTS["sign-in"], data)
     response_data = response.json()
 
     return {"user": conduit_user, "tokens": response_data["token"]}
+
+
+@pytest.fixture(scope="function")
+def otp(conduit_user: Optional[AbstractBaseUser] = None) -> Dict[str, Any]:
+    """Fixture to provide otp, email_token and user"""
+
+    password: str = None
+    if conduit_user:
+        password = OTPFactory.create(owner=conduit_user)
+    password = OTPFactory.create()
+
+    email_token = get_email_token(password.owner.email)
+    return dict(password=password, email_token=email_token, user=password.owner)
 
 
 @pytest.mark.django_db
@@ -248,7 +264,6 @@ class TestPasswordRecoveryAPI:
     def test_user_can_request_password_reset(
         self, mock_stmp_mail, user_factory, client
     ):
-
         conduit_user = user_factory.create()
         data = dict(email=conduit_user.email)
         response = client.post(
@@ -329,3 +344,143 @@ class TestPasswordRecoveryAPI:
         conduit_user.refresh_from_db()
         password = conduit_user.otp
         assert password.otp in mock_stmp_mail.call_args[0][0][1]
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_incorrect_otp_raises_400(self, mock_stmp_mail, otp, client):
+
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={"otp": "123456", "token": otp.get("email_token")},
+        )
+
+        assert response.status_code == 400
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_nonexistent_otp_raises_404(self, mock_stmp_mail, user_factory, client):
+
+        conduit_user = user_factory.create()
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={"otp": "123456", "token": get_email_token(conduit_user.email)},
+        )
+        assert response.status_code == 404
+
+    @patch("django.utils.timezone.now")
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_expired_otp_raises_400(
+        self, mock_stmp_mail, mock_timezone_now, otp, client
+    ):
+
+        mock_timezone_now.return_value = otp.get("password").expiry + timedelta(hours=3)
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={"otp": otp.get("password").otp, "token": otp.get("email_token")},
+        )
+        assert response.status_code == 400
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_incorrect_email_token_raises_400(self, mock_stmp_mail, otp, client):
+
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={
+                "otp": otp.get("password").otp,
+                "token": otp.get("email_token") + "uty",
+            },
+        )
+
+        assert response.status_code == 400
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_correct_otp_returns_correct_token_and_200(
+        self, mock_stmp_mail, otp, client
+    ):
+
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={"otp": otp.get("password").otp, "token": otp.get("email_token")},
+        )
+        assert response.status_code == 200
+        response_data = response.json()
+
+        assert "token" in response_data.keys()
+        assert response_data["token"] == otp.get("email_token")
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_new_otp_is_created_if_reset_is_requested_again(
+        self, mock_stmp_mail, otp, client
+    ):
+
+        conduit_user = otp.get("user")
+        old_otp = conduit_user.otp.otp
+
+        data = dict(email=conduit_user.email)
+        response = client.post(
+            ENDPOINTS["request-password-reset"],
+            data=data,
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        conduit_user.refresh_from_db()
+        password = conduit_user.otp
+
+        assert password.otp != old_otp
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_incorrect_token_during_reset_raises_400(self, mock_stmp_mail, otp, client):
+
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={"otp": otp.get("password").otp, "token": otp.get("email_token")},
+        )
+        assert response.status_code == 200
+
+        new_password = "its-not-a-secret"
+        response = client.put(
+            ENDPOINTS["reset-password"],
+            data={"password": new_password, "token": otp.get("email_token") + "uty"},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_cannot_reset_password_without_claiming_otp(
+        self, mock_stmp_mail, otp, client
+    ):
+
+        new_password = "its-not-a-secret"
+        response = client.put(
+            ENDPOINTS["reset-password"],
+            data={"password": new_password, "token": otp.get("email_token")},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+
+    @patch("abstract.tasks.send_emails.send_smtp_email.delay")
+    def test_user_can_reset_password(self, mock_stmp_mail, otp, client):
+
+        response = client.post(
+            ENDPOINTS["confirm"],
+            data={"otp": otp.get("password").otp, "token": otp.get("email_token")},
+        )
+        assert response.status_code == 200
+
+        new_password = "its-not-a-secret"
+        response = client.put(
+            ENDPOINTS["reset-password"],
+            data={"password": new_password, "token": otp.get("email_token")},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 200
+
+        # test new password works
+        conduit_user = otp.get("user")
+        user = {
+            "email": conduit_user.email,
+            "password": "its-not-a-secret",
+        }
+        response = client.post(ENDPOINTS["sign-in"], data=user)
+        assert response.status_code == 200

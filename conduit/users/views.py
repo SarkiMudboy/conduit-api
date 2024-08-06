@@ -1,7 +1,8 @@
+from abstract.exceptions import BadRequestException
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.http.request import HttpRequest
-from django.http.response import Http404, HttpResponse, HttpResponseBadRequest
+from django.http.response import Http404, HttpResponse
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import status
 from rest_framework.mixins import (
@@ -13,6 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .models import OTP
 from .serializers import (
     ChangePasswordSerializer,
     ConfirmOTPSerializer,
@@ -130,7 +132,7 @@ class PasswordView(viewsets.GenericViewSet):
         if token:
             email = retrieve_email_from_token(token) if token else None
             if not email:
-                raise HttpResponseBadRequest()
+                raise BadRequestException("Invalid email token")
         else:
             email = self.request.data.get("email", None)
 
@@ -141,8 +143,9 @@ class PasswordView(viewsets.GenericViewSet):
 
     def get_otp(self):
         user = self.get_object()
-        otp = user.otp
-        if not otp:
+        try:
+            otp = user.otp
+        except OTP.DoesNotExist:
             raise Http404("OTP for user does not exist")
         return otp
 

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     # local apps
     "users",
     "abstract",
+    "storage",
     # third-party
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",

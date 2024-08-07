@@ -10,6 +10,8 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from storage.choices import DriveType
+from storage.models import Drive
 
 from .managers import UserManager
 
@@ -61,6 +63,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
         }
 
         EmailClient.send(email_data)
+
+    def prep_personal_drive(self):
+
+        Drive.objects.create(owner=self, type=DriveType.PERSONAL, size=5000000.0)
+
+        # create bucket here...omo
 
 
 class OTP(TimestampUUIDMixin):

@@ -27,6 +27,15 @@ class Drive(TimestampUUIDMixin):
         "Bucket", related_name="drive", null=True, blank=True, on_delete=models.CASCADE
     )
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner"],
+                condition=models.Q(type="PERSONAL"),
+                name="unique_personal_drive_per_user",
+            )
+        ]
+
     def __str__(self) -> str:
         return self.name
 

@@ -66,7 +66,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
 
     def prep_personal_drive(self):
 
-        Drive.objects.create(owner=self, type=DriveType.PERSONAL, size=5000000.0)
+        Drive.objects.create(
+            owner=self,
+            name=self.tag + " - drive",
+            type=DriveType.PERSONAL,
+            size=5000000.0,
+        )
 
         # create bucket here...omo
 

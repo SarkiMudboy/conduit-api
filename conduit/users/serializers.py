@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from abstract.utils import parse_querydict
 from django.contrib.auth import authenticate
@@ -7,6 +7,8 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
+from storage.choices import DriveType
+from storage.serializers import UserDriveSerializer
 
 from .models import OTP, User
 from .utils import get_email_token
@@ -15,10 +17,11 @@ from .utils import get_email_token
 class UserSerializer(serializers.ModelSerializer):
 
     avatar = serializers.SerializerMethodField()
+    drive = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["uid", "email", "password", "tag", "avatar"]
+        fields = ["uid", "email", "password", "tag", "avatar", "drive"]
         read_only_fields = ["uid"]
         extra_kwargs = {"tag": {"required": False}, "password": {"write_only": True}}
 
@@ -35,6 +38,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_avatar(self, user: User) -> Optional[str]:
         return user.avatar or None
+
+    def get_drive(self, user: User) -> Dict[str, Any]:
+        drive = user.user_drive.filter(type=DriveType.PERSONAL).first()
+        return UserDriveSerializer(drive).data
 
     def to_internal_value(self, data):
         data = parse_querydict(data)

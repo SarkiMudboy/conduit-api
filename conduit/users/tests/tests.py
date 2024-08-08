@@ -273,7 +273,7 @@ class TestPasswordRecoveryAPI:
         )
         assert response.status_code == 200
 
-    def test_invalid_email_returns_404(self, user_factory, client):
+    def test_invalid_email_returns_200_regardless(self, user_factory, client):
 
         user_factory.create()
         data = dict(email="new@exxample.com")
@@ -282,7 +282,8 @@ class TestPasswordRecoveryAPI:
             data=data,
             content_type="application/json",
         )
-        assert response.status_code == 404
+        assert response.status_code == 400
+        assert response.json() == {}
 
     @patch("abstract.tasks.send_emails.send_smtp_email.delay")
     def test_email_token_is_returned_in_response(

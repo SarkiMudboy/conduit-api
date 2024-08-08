@@ -23,6 +23,7 @@ from .serializers import (
     PasswordResetSerializer,
     UserSerializer,
 )
+from .throttle import PasswordThrottle
 from .utils import retrieve_email_from_token
 
 User = get_user_model()
@@ -123,6 +124,7 @@ class PasswordView(viewsets.GenericViewSet):
     serializer_class = PasswordResetSerializer
     queryset = User.objects.filter(is_active=True)
     permission_classes = [AllowAny]
+    throttle_classes = [PasswordThrottle]
 
     def get_object(self):
 
@@ -138,7 +140,7 @@ class PasswordView(viewsets.GenericViewSet):
 
         user = self.queryset.filter(email=email).first()
         if not user:
-            raise Http404("User not found")
+            return None
         return user
 
     def get_otp(self):
@@ -151,10 +153,13 @@ class PasswordView(viewsets.GenericViewSet):
 
     def request_password_reset(self, request, *args, **kwargs):
         user = self.get_object()
-        serializer = self.serializer_class(user, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.send_password_reset_mail()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data: dict = {}
+        if user:
+            serializer = self.serializer_class(user, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.send_password_reset_mail()
+            data = serializer.data
+        return Response(data, status=status.HTTP_200_OK)
 
     def confirm_otp(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         otp = self.get_otp()

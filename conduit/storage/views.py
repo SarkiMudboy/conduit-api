@@ -1,8 +1,11 @@
+from abstract.exceptions import BadRequestException
 from abstract.views import BaseResourceView
 from rest_framework.mixins import DestroyModelMixin, ListModelMixin, RetrieveModelMixin
 from rest_framework.response import Serializer
-from storage.models import Drive
-from storage.serializers import DriveDetailSerializer, DriveSerializer
+
+from .choices import DriveType
+from .models import Drive, Object
+from .serializers import DriveDetailSerializer, DriveObjectSerializer, DriveSerializer
 
 
 class DriveViewSet(
@@ -27,6 +30,8 @@ class DriveViewSet(
 
     def perform_destroy(self, instance):
         """Sets the drive to inactive"""
+        if instance.type == DriveType.PERSONAL:
+            raise BadRequestException("You cannot delete your drive")
         instance.is_active = False
         instance.save()
 
@@ -34,7 +39,9 @@ class DriveViewSet(
 class ObjectViewSet(
     RetrieveModelMixin, ListModelMixin, DestroyModelMixin, BaseResourceView
 ):
-    ...
+    queryset = Object.objects.select_related("drive")
+    serializer_class = DriveObjectSerializer
+    lookup_field = "path"
 
 
 class DriveMemberView(RetrieveModelMixin, ListModelMixin, BaseResourceView):

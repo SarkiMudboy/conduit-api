@@ -1,6 +1,8 @@
+from typing import List
+
 from rest_framework import serializers
 
-from .models import Drive
+from .models import Drive, Object
 
 
 class UserDriveSerializer(serializers.ModelSerializer):
@@ -22,11 +24,20 @@ class DriveSerializer(serializers.ModelSerializer):
         fields = ["uid", "name", "size", "used", "type"]
 
 
+class DriveObjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Object
+        fields = ["uid", "name", "size", "metadata", "path"]
+
+
 class DriveDetailSerializer(serializers.ModelSerializer):
 
-    members = ""  # first three
-    objects = ""
+    members = serializers.SerializerMethodField()  # first three
+    objects = DriveObjectSerializer(many=True, read_only=True)
 
     class Meta:
         model = Drive
-        field = ["uid", "name", "size", "used", "members", "objects"]
+        fields = ["uid", "name", "size", "used", "members", "objects"]
+
+    def get_members(self, drive: Drive) -> List[str]:
+        return drive.members.values_list("tag", flat=True)[:3]

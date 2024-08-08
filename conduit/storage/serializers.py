@@ -14,3 +14,19 @@ class UserDriveSerializer(serializers.ModelSerializer):
     def get_size(self, drive: Drive) -> str:
         drive_size = drive.size / 1000000.0
         return str(drive_size) + "GB"
+
+
+class DriveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Drive
+        fields = ["uid", "name", "size", "used", "type"]
+
+
+class DriveDetailSerializer(serializers.ModelSerializer):
+
+    members = ""  # first three
+    objects = ""
+
+    class Meta:
+        model = Drive
+        field = ["uid", "name", "size", "used", "members", "objects"]

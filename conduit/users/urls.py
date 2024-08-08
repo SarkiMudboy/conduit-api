@@ -28,6 +28,5 @@ urlpatterns = [
     ),
     path("confirm-reset-password/", confirm_otp, name="confirm-reset-password"),
     path("reset-password/", reset_password, name="reset-password"),
+    *router.urls,
 ]
-
-urlpatterns += router.urls

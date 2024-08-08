@@ -22,7 +22,9 @@ class Drive(TimestampUUIDMixin):
         _("Drive type"), choices=DriveType.choices, default=DriveType.SHARED
     )
     size = models.FloatField(_("Drive size (kb)"), null=True, blank=True)
+    used = models.FloatField(_("Space used (kb)"), null=True, blank=True)
     members = models.ManyToManyField("users.User")
+    is_active = models.BooleanField(default=True)
     bucket = models.ForeignKey(
         "Bucket", related_name="drive", null=True, blank=True, on_delete=models.CASCADE
     )
@@ -31,10 +33,21 @@ class Drive(TimestampUUIDMixin):
         constraints = [
             models.UniqueConstraint(
                 fields=["owner"],
-                condition=models.Q(type="PERSONAL"),
+                condition=models.Q(type="personal"),
                 name="unique_personal_drive_per_user",
             )
         ]
+
+    def save(self, *args, **kwargs):
+        """Verify that the drive is unique for personal"""
+
+        if (
+            self.type == DriveType.PERSONAL
+            and Drive.objects.filter(owner=self.owner, type=DriveType.PERSONAL).exists()
+        ):
+            raise ValueError("A user can only have one personal drive.")
+
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.name

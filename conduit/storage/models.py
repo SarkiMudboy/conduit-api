@@ -70,6 +70,13 @@ class Bucket(TimestampUUIDMixin):
 class Object(TimestampUUIDMixin):
     """Represents the file or folder to be stored"""
 
+    owner = models.ForeignKey(
+        "users.User",
+        related_name="storage_object",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
     name = models.CharField(_("File/Folder name"), max_length=2000)
     is_directory = models.BooleanField(default=False)
     drive = models.ForeignKey(

@@ -124,7 +124,11 @@ class PasswordView(viewsets.GenericViewSet):
     serializer_class = PasswordResetSerializer
     queryset = User.objects.filter(is_active=True)
     permission_classes = [AllowAny]
-    throttle_classes = [PasswordThrottle]
+
+    def get_throttles(self) -> list:
+        if self.request.method == "POST":
+            return [PasswordThrottle()]
+        return []
 
     def get_object(self):
 
@@ -159,6 +163,7 @@ class PasswordView(viewsets.GenericViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.send_password_reset_mail()
             data = serializer.data
+        # TO DO: Add a method that returns {'email': email, 'token': get_email_token()}
         return Response(data, status=status.HTTP_200_OK)
 
     def confirm_otp(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:

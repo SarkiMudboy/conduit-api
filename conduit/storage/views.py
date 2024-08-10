@@ -1,7 +1,7 @@
-from abstract.exceptions import BadRequestException, UnauthorizedException
-from abstract.views import BaseResourceView
+from abstract.exceptions import BadRequestException
 from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.db import models
 from django.db.models import QuerySet
 from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (
@@ -17,6 +17,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from .choices import DriveType
 from .models import Drive, Object
+from .permissions import IsDriveOwner, IsDriveOwnerOrMember
 from .serializers import (
     AddDriveMemberSerializer,
     DriveDetailSerializer,
@@ -29,7 +30,7 @@ User: AbstractBaseUser = get_user_model()
 
 
 class DriveViewSet(
-    RetrieveModelMixin, ListModelMixin, DestroyModelMixin, BaseResourceView
+    RetrieveModelMixin, ListModelMixin, DestroyModelMixin, GenericViewSet
 ):
 
     queryset = (
@@ -38,6 +39,7 @@ class DriveViewSet(
         .filter(is_active=True)
     )
     serializer_class = DriveSerializer
+    permission_classes = [IsAuthenticated, IsDriveOwner]
     lookup_field = "uid"
 
     def get_serializer_class(self) -> Serializer:
@@ -45,8 +47,15 @@ class DriveViewSet(
             return DriveDetailSerializer
         return super().get_serializer_class()
 
+    def get_queryset(self) -> QuerySet:
+        return self.queryset.filter(
+            models.Q(owner=self.request.user) | models.Q(members=self.request.user)
+        ).distinct()
+
     def perform_destroy(self, instance):
         """Sets the drive to inactive"""
+
+        self.check_object_permissions(self.request, instance)
         if instance.type == DriveType.PERSONAL:
             raise BadRequestException("You cannot delete your drive")
         instance.is_active = False
@@ -58,17 +67,17 @@ class ObjectViewSet(
 ):
     queryset = Object.objects.select_related("drive")
     serializer_class = DriveObjectSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsDriveOwnerOrMember, IsDriveOwner]
     lookup_field = "uid"
 
     def get_queryset(self) -> QuerySet:
 
         drive_uid = self.kwargs.get("drives_uid")
-        drive = get_object_or_404(Drive, uid=drive_uid)
-
-        if drive.owner != self.request.user:
-            raise UnauthorizedException("You do not have access to this drive")
-
+        drive = get_object_or_404(
+            Drive.objects.select_related("owner").prefetch_related("members"),
+            uid=drive_uid,
+        )
+        self.check_object_permissions(self.request, drive)
         return self.queryset.filter(drive__uid=drive_uid)
 
     def get_object(self) -> Object:
@@ -88,17 +97,17 @@ class DriveMemberView(
 
     queryset = User.objects.all()
     serializer_class = DriveMemberSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsDriveOwnerOrMember, IsDriveOwner]
     lookup_field = "uid"
 
     def get_drive(self) -> Drive:
 
         drive_uid = self.kwargs.get("drives_uid")
-        drive = get_object_or_404(Drive, uid=drive_uid)
-
-        if drive.owner != self.request.user:
-            raise UnauthorizedException("You do not have access to this drive")
-
+        drive = get_object_or_404(
+            Drive.objects.select_related("owner").prefetch_related("members"),
+            uid=drive_uid,
+        )
+        self.check_object_permissions(self.request, drive)
         return drive
 
     def get_queryset(self) -> QuerySet:

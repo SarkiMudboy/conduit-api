@@ -37,11 +37,11 @@ class DriveObjectSerializer(serializers.ModelSerializer):
 class DriveDetailSerializer(serializers.ModelSerializer):
 
     members = serializers.SerializerMethodField()  # first three
-    objects = DriveObjectSerializer(many=True, read_only=True)
+    storage_object = DriveObjectSerializer(many=True, read_only=True)
 
     class Meta:
         model = Drive
-        fields = ["uid", "name", "size", "used", "members", "objects"]
+        fields = ["uid", "name", "size", "used", "members", "storage_object"]
 
     def get_members(self, drive: Drive) -> List[str]:
         return drive.members.values_list("tag", flat=True)[:3]

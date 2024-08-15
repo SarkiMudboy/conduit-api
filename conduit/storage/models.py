@@ -8,7 +8,7 @@ from storage.choices import DriveType
 
 def upload_file_to_user_drive(file: "Object", filename: str) -> str:
     """Dir for upload"""
-    return f"{file.drive.owner.tag}/{file.drive.name}/files/{filename}"
+    return f"{file.drive.owner.tag}/{file.drive.name}/{file.path}"
 
 
 class Drive(TimestampUUIDMixin):
@@ -25,9 +25,6 @@ class Drive(TimestampUUIDMixin):
     used = models.FloatField(_("Space used (kb)"), null=True, blank=True)
     members = models.ManyToManyField("users.User")
     is_active = models.BooleanField(default=True)
-    bucket = models.ForeignKey(
-        "Bucket", related_name="drive", null=True, blank=True, on_delete=models.CASCADE
-    )
 
     class Meta:
         constraints = [
@@ -53,20 +50,6 @@ class Drive(TimestampUUIDMixin):
         return self.name
 
 
-class Bucket(TimestampUUIDMixin):
-
-    owner = models.ForeignKey(
-        "users.User", related_name="bucket", on_delete=models.CASCADE
-    )
-    name = models.CharField(
-        _("AWS bucket name"), max_length=2000, null=True, blank=True
-    )
-    url = models.URLField(_("AWS bucket URL"), null=True, blank=True)
-
-    def __str__(self) -> str:
-        return self.name
-
-
 class Object(TimestampUUIDMixin):
     """Represents the file or folder to be stored"""
 
@@ -78,12 +61,15 @@ class Object(TimestampUUIDMixin):
         blank=True,
     )
     name = models.CharField(_("File/Folder name"), max_length=2000)
-    is_directory = models.BooleanField(default=False)
+    is_directory = models.BooleanField(default=False)  # may need to remove this
     drive = models.ForeignKey(
         Drive, related_name="storage_object", on_delete=models.CASCADE
     )
     file = models.FileField(
         _("File"), null=True, blank=True, upload_to=upload_file_to_user_drive
+    )
+    content = models.ManyToManyField(
+        "self", blank=True, related_name="in_directory", symmetrical=False
     )
     path = models.CharField(_("AWS path : key"), max_length=2000, null=True, blank=True)
     filesystem_path = models.CharField(

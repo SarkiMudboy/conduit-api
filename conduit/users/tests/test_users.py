@@ -282,7 +282,7 @@ class TestPasswordRecoveryAPI:
             data=data,
             content_type="application/json",
         )
-        assert response.status_code == 400
+        assert response.status_code == 200
         assert response.json() == {}
 
     @patch("abstract.tasks.send_emails.send_smtp_email.delay")

@@ -24,6 +24,7 @@ from .serializers import (
     DriveMemberSerializer,
     DriveObjectSerializer,
     DriveSerializer,
+    ObjectDetailSerializer,
 )
 
 User: AbstractBaseUser = get_user_model()
@@ -35,7 +36,7 @@ class DriveViewSet(
 
     queryset = (
         Drive.objects.prefetch_related("members")
-        .select_related("bucket", "owner")
+        .select_related("owner")
         .filter(is_active=True)
     )
     serializer_class = DriveSerializer
@@ -65,10 +66,15 @@ class DriveViewSet(
 class ObjectViewSet(
     RetrieveModelMixin, ListModelMixin, DestroyModelMixin, GenericViewSet
 ):
-    queryset = Object.objects.select_related("drive")
+    queryset = Object.objects.select_related("drive").prefetch_related("content")
     serializer_class = DriveObjectSerializer
     permission_classes = [IsAuthenticated, IsDriveOwnerOrMember, IsDriveOwner]
     lookup_field = "uid"
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return ObjectDetailSerializer
+        return super().get_serializer_class()
 
     def get_queryset(self) -> QuerySet:
 
@@ -78,7 +84,11 @@ class ObjectViewSet(
             uid=drive_uid,
         )
         self.check_object_permissions(self.request, drive)
-        return self.queryset.filter(drive__uid=drive_uid)
+
+        qs = self.queryset.filter(drive__uid=drive_uid)
+        if self.action == "list":
+            return qs.filter(in_directory__isnull=True)
+        return qs
 
     def get_object(self) -> Object:
         try:

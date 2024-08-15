@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -37,14 +37,18 @@ class DriveObjectSerializer(serializers.ModelSerializer):
 class DriveDetailSerializer(serializers.ModelSerializer):
 
     members = serializers.SerializerMethodField()  # first three
-    storage_object = DriveObjectSerializer(many=True, read_only=True)
+    storage_objects = serializers.SerializerMethodField()
 
     class Meta:
         model = Drive
-        fields = ["uid", "name", "size", "used", "members", "storage_object"]
+        fields = ["uid", "name", "size", "used", "members", "storage_objects"]
 
     def get_members(self, drive: Drive) -> List[str]:
         return drive.members.values_list("tag", flat=True)[:3]
+
+    def get_storage_objects(self, drive: Drive) -> Dict[str, Any]:
+        objects = drive.storage_object.filter(in_directory__isnull=True)
+        return DriveObjectSerializer(objects, many=True).data
 
 
 class AddDriveMemberSerializer(serializers.ModelSerializer):
@@ -69,3 +73,19 @@ class DriveMemberSerializer(serializers.ModelSerializer):
         model = User
         fields = ["uid", "tag", "avatar"]
         read_only_fields = ["uid", "tag", "avatar"]
+
+
+class ObjectDetailSerializer(serializers.ModelSerializer):
+    content = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Object
+        fields = ["uid", "name", "size", "content", "metadata", "path"]
+
+    def get_content(self, object: Object) -> Dict[str, Any]:
+        """Nested content for directories: 1 layer deep"""
+        depth = self.context.get("depth", 2)
+        objects = object.content.all()
+        if depth > 1:
+            return DriveObjectSerializer(objects, many=True, context={"depth": -1}).data
+        return None

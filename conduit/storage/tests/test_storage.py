@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from rest_framework.test import APIClient
 from users.tests.factory import UserFactory
+from users.tests.utils import login
 
 from ..choices import DriveType
 from ..models import Drive
@@ -82,7 +83,7 @@ class TestDriveAPI:
         response_data = response.json()
 
         listed_drive = response_data[1]
-        personal_drive = conduit_user.user_drive.filter(type=DriveType.PERSONAL)
+        personal_drive = conduit_user.user_drive.filter(type=DriveType.PERSONAL).first()
         drive = (
             personal_drive if listed_drive["type"] == DriveType.PERSONAL else test_drive
         )
@@ -93,7 +94,7 @@ class TestDriveAPI:
         assert listed_drive["used"] == drive.used
         assert listed_drive["type"] == drive.type
 
-    def test_user_can_view_drive(self, drive_factory, object_factory, tokens, client):
+    def test_owner_can_view_drive(self, drive_factory, object_factory, tokens, client):
 
         conduit_user = tokens["user"]
         token = tokens["tokens"]
@@ -132,3 +133,96 @@ class TestDriveAPI:
         assert test_obj["size"] == obj.size
         assert test_obj["metadata"] == obj.metadata
         assert test_obj["path"] == obj.path
+
+    def test_owner_can_only_get_active_drives(self, drive_factory, tokens, client):
+
+        conduit_user = tokens["user"]
+        token = tokens["tokens"]
+        drive_factory.create_batch(2, owner=conduit_user, is_active=True)
+        drive_factory.create_batch(4, owner=conduit_user, is_active=False)
+
+        headers = {"Authorization": "Bearer " + token["access"]}
+
+        response = client.get(ENDPOINTS["list-drive"], headers=headers)
+        assert response.status_code == 200
+
+        response_data = response.json()
+        assert len(response_data) == 3  # 2 + 1 personal drive
+
+    def test_user_cannot_delete_personal_drive(self, drive_factory, tokens, client):
+
+        conduit_user = tokens["user"]
+        token = tokens["tokens"]
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        personal_drive = conduit_user.user_drive.get(type=DriveType.PERSONAL)
+        response = client.delete(
+            ENDPOINTS["mod-drive"] + f"{str(personal_drive.uid)}/", headers=headers
+        )
+
+        assert response.status_code == 400
+
+    def test_drive_member_can_list_all_associated_drives(
+        self, user_factory, drive_factory, client
+    ):
+
+        user = user_factory.create()
+        member = user_factory.create()
+        drive = drive_factory.create(owner=user)
+        drive_factory.create_batch(2, owner=member)
+        token = login(member)
+
+        drive.members.add(member.uid)
+        headers = {"Authorization": "Bearer " + token["access"]}
+
+        response = client.get(ENDPOINTS["list-drive"], headers=headers)
+        assert response.status_code == 200
+
+        response_data = response.json()
+        assert len(response_data) == 4
+
+    def test_drive_member_can_view_accociated_drive(
+        self, user_factory, drive_factory, client
+    ):
+
+        user = user_factory.create()
+        member = user_factory.create()
+        drive = drive_factory.create(owner=user)
+
+        token = login(member)
+
+        drive.members.add(member.uid)
+        headers = {"Authorization": "Bearer " + token["access"]}
+
+        response = client.get(
+            ENDPOINTS["mod-drive"] + f"{str(drive.uid)}/", headers=headers
+        )
+        assert response.status_code == 200
+
+    def test_drive_member_cannot_delete_drive(
+        self, drive_factory, user_factory, client
+    ):
+
+        user = user_factory.create()
+        member = user_factory.create()
+        token = login(member)
+        drive = drive_factory.create(owner=user)
+        drive.members.add(member.uid)
+
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.delete(
+            ENDPOINTS["mod-drive"] + f"{str(drive.uid)}/", headers=headers
+        )
+
+        assert response.status_code == 403
+
+    def test_user_can_delete_drive(self, drive_factory, tokens, client):
+
+        conduit_user = tokens["user"]
+        token = tokens["tokens"]
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        drive = drive_factory.create(owner=conduit_user)
+        response = client.delete(
+            ENDPOINTS["mod-drive"] + f"{str(drive.uid)}/", headers=headers
+        )
+
+        assert response.status_code == 204

@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 
 from ..models import OTP
 from ..utils import get_email_token
-from .factory import OTPFactory, UserFactory
+from .factory import OTPFactory
 
 User: AbstractBaseUser = get_user_model()
 faker = FakerFactory.create()
@@ -26,20 +26,6 @@ ENDPOINTS = {
     "confirm": "/api/v1/users/confirm-reset-password/",
     "reset-password": "/api/v1/users/reset-password/",
 }
-
-
-@pytest.fixture(scope="function")
-def tokens(conduit_user: Optional[AbstractBaseUser] = None) -> Dict[str, Any]:
-    """Helper function for logging in and getting tokens"""
-
-    if not conduit_user:
-        conduit_user = UserFactory.create()
-    client = APIClient()
-    data = {"email": conduit_user.email, "password": "its-a-secret"}
-    response = client.post(ENDPOINTS["sign-in"], data)
-    response_data = response.json()
-
-    return {"user": conduit_user, "tokens": response_data["token"]}
 
 
 @pytest.fixture(scope="function")

@@ -14,6 +14,7 @@ from storage.choices import DriveType
 from storage.models import Drive
 
 from .managers import UserManager
+from .tasks import create_block_folder
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
@@ -34,12 +35,16 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
         return self.email
 
     def generate_tag(self) -> str:
-        email_username = self.email.split("@")[0]
+        email_username = self.username
         tag = f"{email_username}{''.join(random.choices(string.ascii_lowercase, k=4))}{random.randint(100, 999)}"
         self.tag = tag
         self.save()
 
         return tag
+
+    @property
+    def username(self) -> str:
+        return self.email.split("@")[0]
 
     def send_password_reset_mail_with_otp(self):
 
@@ -66,7 +71,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
 
     def prep_personal_drive(self):
 
-        Drive.objects.create(
+        drive = Drive.objects.create(
             owner=self,
             name=self.tag + " - drive",
             type=DriveType.PERSONAL,
@@ -74,7 +79,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
             used=0.0,
         )
 
-        # create bucket here...omo
+        # create dir bucket folder here...easy😊
+        create_block_folder.delay(f"{self.tag}/{drive.name}")
 
 
 class OTP(TimestampUUIDMixin):

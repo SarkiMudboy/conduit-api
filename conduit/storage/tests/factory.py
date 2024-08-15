@@ -15,9 +15,7 @@ class DriveFactory(DjangoModelFactory):
         model = Drive
 
     type = "shared"
-    # type = factory.fuzzy.FuzzyChoice(DriveType.choices, getter= lambda d: d[1])
     size = factory.LazyAttribute(lambda _: random.randint(20000, 4000000))
-    # used = factory.LazyAttribute(lambda _: (factory.SelfAttribute('size')/2))
 
     @factory.post_generation
     def members(self, create, extracted: list, **kwargs):

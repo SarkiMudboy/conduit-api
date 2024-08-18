@@ -24,6 +24,6 @@ class S3AWSHandler:
 
     def create_folder(self, path: str) -> None:
         try:
-            self.client.put_object(Bucket=bucket, key=path)
+            self.client.put_object(Bucket=bucket, Key=path)
         except Exception as e:
             logger.exception(f"Error creating folder -> {str(e)}")

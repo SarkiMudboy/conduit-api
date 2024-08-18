@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -14,6 +16,14 @@ ENDPOINTS = {
     "list-drive": "/api/v1/drives/",
     "mod-drive": "/api/v1/drives/",
 }
+
+
+def build_object_endpoint(drive_uid: str, object_uid: str = None) -> str:
+
+    root = ENDPOINTS["mod-drive"] + drive_uid + "/objects/"
+    if object_uid:
+        return root + object_uid + "/"
+    return root
 
 
 @pytest.mark.django_db
@@ -226,3 +236,25 @@ class TestDriveAPI:
         )
 
         assert response.status_code == 204
+
+
+@pytest.mark.django_db
+@patch("users.tasks.create_block_folder.delay")
+class TestObjectAPI:
+
+    client = APIClient()
+
+    def test_owner_can_list_objects_in_drive(
+        self, mock_create_folder, object_factory, drive_factory, tokens, client
+    ):
+
+        conduit_user = tokens["user"]
+        token = tokens["tokens"]
+        drive = drive_factory.create(owner=conduit_user)
+        object_factory.create_batch(3, drive=drive)
+
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.get(
+            build_object_endpoint(drive_uid=drive.uid), headers=headers
+        )
+        assert response.status_code == 200

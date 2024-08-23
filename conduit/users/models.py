@@ -14,7 +14,6 @@ from storage.choices import DriveType
 from storage.models import Drive
 
 from .managers import UserManager
-from .tasks import create_block_folder
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
@@ -71,16 +70,13 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
 
     def prep_personal_drive(self):
 
-        drive = Drive.objects.create(
+        Drive.objects.create(
             owner=self,
             name=self.tag + " - drive",
             type=DriveType.PERSONAL,
             size=5000000.0,
             used=0.0,
         )
-
-        # create dir bucket folder here...easy😊
-        create_block_folder.delay(f"{self.tag}/{drive.name}")
 
 
 class OTP(TimestampUUIDMixin):

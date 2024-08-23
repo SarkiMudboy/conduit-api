@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -239,13 +237,12 @@ class TestDriveAPI:
 
 
 @pytest.mark.django_db
-@patch("users.tasks.create_block_folder.delay")
 class TestObjectAPI:
 
     client = APIClient()
 
     def test_owner_can_list_objects_in_drive(
-        self, mock_create_folder, object_factory, drive_factory, tokens, client
+        self, object_factory, drive_factory, tokens, client
     ):
 
         conduit_user = tokens["user"]
@@ -255,6 +252,54 @@ class TestObjectAPI:
 
         headers = {"Authorization": f"Bearer {token.get('access')}"}
         response = client.get(
-            build_object_endpoint(drive_uid=drive.uid), headers=headers
+            build_object_endpoint(drive_uid=str(drive.uid)), headers=headers
         )
         assert response.status_code == 200
+        response_data = response.json()
+        assert len(response_data) == 3
+
+    def test_drive_member_can_list_objects_in_drive(
+        self, object_factory, drive_factory, user_factory, client
+    ):
+
+        user = user_factory.create()
+        member = user_factory.create()
+        token = login(member)
+
+        drive = drive_factory.create(owner=user)
+        drive.members.add(member.uid)
+
+        object_factory.create_batch(3, drive=drive)
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.get(
+            build_object_endpoint(drive_uid=str(drive.uid)), headers=headers
+        )
+        assert response.status_code == 200
+        response_data = response.json()
+        assert len(response_data) == 3
+
+    def test_unauthenticated_user_cannot_access_objects_in_drive(
+        self, user_factory, object_factory, client
+    ):
+
+        user = user_factory.create()
+        object = object_factory.create(drive__owner=user)
+        drive = object.drive
+
+        response = client.get(build_object_endpoint(drive_uid=str(drive.uid)))
+        assert response.status_code == 401
+
+    def test_unauthorized_user_cannot_access_obejcts_in_drive(
+        self, user_factory, object_factory, tokens, client
+    ):
+
+        user = user_factory.create()
+        object = object_factory.create(drive__owner=tokens["user"])
+        drive = object.drive
+
+        token = login(user)
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.get(
+            build_object_endpoint(drive_uid=str(drive.uid)), headers=headers
+        )
+        assert response.status_code == 403

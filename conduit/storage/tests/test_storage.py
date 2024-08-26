@@ -6,7 +6,7 @@ from users.tests.factory import UserFactory
 from users.tests.utils import login
 
 from ..choices import DriveType
-from ..models import Drive
+from ..models import Drive, Object
 
 User: AbstractBaseUser = get_user_model()
 
@@ -289,7 +289,7 @@ class TestObjectAPI:
         response = client.get(build_object_endpoint(drive_uid=str(drive.uid)))
         assert response.status_code == 401
 
-    def test_unauthorized_user_cannot_access_obejcts_in_drive(
+    def test_unauthorized_user_cannot_access_objects_in_drive(
         self, user_factory, object_factory, tokens, client
     ):
 
@@ -303,3 +303,96 @@ class TestObjectAPI:
             build_object_endpoint(drive_uid=str(drive.uid)), headers=headers
         )
         assert response.status_code == 403
+
+    def test_owner_and_drive_member_can_view_object(
+        self, user_factory, object_factory, tokens, client
+    ):
+
+        user = user_factory.create()
+        object = object_factory.create(drive__owner=tokens["user"])
+        drive = object.drive
+        drive.members.add(user.uid)
+
+        headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
+        response = client.get(
+            build_object_endpoint(drive_uid=str(drive.uid), object_uid=str(object.uid)),
+            headers=headers,
+        )
+        assert response.status_code == 200
+
+        object_data = {
+            "uid": str(object.uid),
+            "name": object.name,
+            "size": object.size,
+            "content": [],
+            "metadata": {"Author": "Abdul"},
+            "path": "/user/",
+        }
+        response_data = response.json()
+        assert response_data == object_data
+
+        token = login(user)
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.get(
+            build_object_endpoint(drive_uid=str(drive.uid), object_uid=str(object.uid)),
+            headers=headers,
+        )
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data == object_data
+
+    def test_only_object_owner_can_delete_object(
+        self, user_factory, object_factory, tokens, client
+    ):
+
+        user = user_factory.create()
+        owner_object = object_factory.create(
+            owner=tokens["user"], drive__owner=tokens["user"]
+        )
+
+        drive = owner_object.drive
+        drive.members.add(user.uid)
+
+        member_object = object_factory.create(owner=user, drive=drive)
+
+        # drive member cannot delete obj
+        token = login(user)
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.delete(
+            build_object_endpoint(
+                drive_uid=str(drive.uid), object_uid=str(owner_object.uid)
+            ),
+            headers=headers,
+        )
+        assert response.status_code == 403
+
+        objs = Object.objects.filter(drive=drive)
+        assert objs.filter(uid=owner_object.uid).exists() is True
+        assert objs.count() == 2
+
+        # owner can..
+        # headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
+        # response = client.delete(
+        #     build_object_endpoint(drive_uid=str(drive.uid), object_uid=str(owner_object.uid)), headers=headers
+        # )
+        # assert response.status_code == 204
+
+        # objs = Object.objects.filter(drive=drive)
+        # assert objs.filter(uid=owner_object.uid).exists() is False
+        # assert objs.count() == 1
+
+        # member deletes
+        # token = login(user)
+        # headers = {"Authorization": f"Bearer {token.get('access')}"}
+        response = client.delete(
+            build_object_endpoint(
+                drive_uid=str(drive.uid), object_uid=str(member_object.uid)
+            ),
+            headers=headers,
+        )
+        print(response.json())
+        assert response.status_code == 204
+
+        objs = Object.objects.filter(drive=drive)
+        assert objs.filter(uid=member_object.uid).exists() is False
+        assert objs.count() == 0

@@ -371,28 +371,137 @@ class TestObjectAPI:
         assert objs.count() == 2
 
         # owner can..
-        # headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
-        # response = client.delete(
-        #     build_object_endpoint(drive_uid=str(drive.uid), object_uid=str(owner_object.uid)), headers=headers
-        # )
-        # assert response.status_code == 204
+        headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
+        response = client.delete(
+            build_object_endpoint(
+                drive_uid=str(drive.uid), object_uid=str(owner_object.uid)
+            ),
+            headers=headers,
+        )
+        assert response.status_code == 204
 
-        # objs = Object.objects.filter(drive=drive)
-        # assert objs.filter(uid=owner_object.uid).exists() is False
-        # assert objs.count() == 1
+        objs = Object.objects.filter(drive=drive)
+        assert objs.filter(uid=owner_object.uid).exists() is False
+        assert objs.count() == 1
 
-        # member deletes
-        # token = login(user)
-        # headers = {"Authorization": f"Bearer {token.get('access')}"}
+        # member cannot delete -> Might change later
+        token = login(user)
+        headers = {"Authorization": f"Bearer {token.get('access')}"}
         response = client.delete(
             build_object_endpoint(
                 drive_uid=str(drive.uid), object_uid=str(member_object.uid)
             ),
             headers=headers,
         )
-        print(response.json())
-        assert response.status_code == 204
+
+        assert response.status_code == 403
 
         objs = Object.objects.filter(drive=drive)
-        assert objs.filter(uid=member_object.uid).exists() is False
-        assert objs.count() == 0
+        assert objs.filter(uid=member_object.uid).exists() is True
+        assert objs.count() == 1
+
+    def test_nested_objects_are_not_listed_in_drive_root(
+        self, drive_factory, object_factory, tokens, client
+    ):
+
+        drive = drive_factory.create(owner=tokens["user"])
+        root_object = object_factory.create(drive=drive)
+        nested_objects = object_factory.create_batch(2, drive=drive)
+        root_object.content.add(*[obj.uid for obj in nested_objects])
+
+        headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
+
+        # in /drive/uid (drive detail) route
+        response = client.get(
+            ENDPOINTS["mod-drive"] + str(drive.uid) + "/",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+        assert len(response_data.get("storage_objects")) == 1
+        assert response_data["storage_objects"][0]["name"] == root_object.name
+
+        # in /objects route
+        response = client.get(
+            build_object_endpoint(drive_uid=str(drive.uid)),
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+        assert len(response_data) == 1
+        assert response_data[0]["name"] == root_object.name
+
+    def test_directory_objects_are_returned_correctly(
+        self, drive_factory, object_factory, tokens, client
+    ):
+
+        drive = drive_factory.create(owner=tokens["user"])
+        root_object = object_factory.create(drive=drive)
+        nested_objects = object_factory.create_batch(2, drive=drive)
+        root_object.content.add(*[obj.uid for obj in nested_objects])
+
+        headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
+        response = client.get(
+            build_object_endpoint(
+                drive_uid=str(drive.uid), object_uid=str(root_object.uid)
+            ),
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+
+        assert len(response_data.get("content")) == 2
+
+        content_data = response_data.pop("content")
+        assert response_data == {
+            "uid": str(root_object.uid),
+            "name": root_object.name,
+            "size": root_object.size,
+            "metadata": {"Author": "Abdul"},
+            "path": "/user/",
+        }
+
+        nested_content = [
+            {
+                "uid": str(obj.uid),
+                "name": obj.name,
+                "size": obj.size,
+                "metadata": {"Author": "Abdul"},
+                "path": "/user/",
+            }
+            for obj in nested_objects
+        ]
+        nested_content.reverse()
+        assert content_data == nested_content
+
+    def test_nested_objects_are_returned_correctly(
+        self, drive_factory, object_factory, tokens, client
+    ):
+
+        drive = drive_factory.create(owner=tokens["user"])
+        root_object = object_factory.create(drive=drive)
+        nested_object = object_factory.create(drive=drive)
+        root_object.content.add(nested_object.uid)
+
+        headers = {"Authorization": f"Bearer {tokens['tokens'].get('access')}"}
+        response = client.get(
+            build_object_endpoint(
+                drive_uid=str(drive.uid), object_uid=str(nested_object.uid)
+            ),
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        response_data = response.json()
+
+        assert response_data == {
+            "uid": str(nested_object.uid),
+            "name": nested_object.name,
+            "size": nested_object.size,
+            "content": [],
+            "metadata": {"Author": "Abdul"},
+            "path": "/user/",
+        }

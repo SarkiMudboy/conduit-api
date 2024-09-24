@@ -18,10 +18,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     avatar = serializers.SerializerMethodField()
     drive = serializers.SerializerMethodField()
+    token = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["uid", "email", "password", "tag", "avatar", "drive"]
+        fields = ["uid", "email", "password", "tag", "avatar", "drive", "token"]
         read_only_fields = ["uid"]
         extra_kwargs = {"tag": {"required": False}, "password": {"write_only": True}}
 
@@ -42,6 +43,10 @@ class UserSerializer(serializers.ModelSerializer):
     def get_drive(self, user: User) -> Dict[str, Any]:
         drive = user.user_drive.filter(type=DriveType.PERSONAL).first()
         return UserDriveSerializer(drive).data
+
+    def get_token(self, user: User) -> Dict[str, str]:
+        token = RefreshToken.for_user(user)
+        return {"refresh": str(token), "access": str(token.access_token)}
 
     def to_internal_value(self, data):
         data = parse_querydict(data)

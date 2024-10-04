@@ -35,10 +35,24 @@ class BaseDriveSerializer(serializers.ModelSerializer):
         model = Drive
         fields = ["name", "members"]
 
+    def validate_members(self, members: List[str]) -> List[str]:
+        if not members:
+            raise serializers.ValidationError("A drive must have at least 1 member")
+        return members
+
+    def validate_name(self, name: str) -> str:
+        if Drive.objects.filter(
+            owner=self.context.get("user"), name=name, is_active=True
+        ).exists():
+            raise serializers.ValidationError(
+                "You have a drive with this name, please rename"
+            )
+        return name
+
     def create(self, validated_data):
 
         members = validated_data.pop("members", [])
-        print(self.context.get("user"), flush=True)
+
         drive = Drive.objects.create(
             owner=self.context.get("user"),
             name=validated_data.get("name"),

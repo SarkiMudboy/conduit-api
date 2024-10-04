@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 from django.db.models import QuerySet
+from django.http import HttpResponse
+from django.http.request import HttpRequest
 from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (
     CreateModelMixin,
@@ -12,6 +14,7 @@ from rest_framework.mixins import (
 )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response, Serializer
+from rest_framework.status import HTTP_201_CREATED
 from rest_framework.views import Http404, status
 from rest_framework.viewsets import GenericViewSet
 
@@ -20,6 +23,7 @@ from .models import Drive, Object
 from .permissions import IsDriveOwner, IsDriveOwnerOrMember
 from .serializers import (
     AddDriveMemberSerializer,
+    BaseDriveSerializer,
     DriveDetailSerializer,
     DriveMemberSerializer,
     DriveObjectSerializer,
@@ -31,7 +35,11 @@ User: AbstractBaseUser = get_user_model()
 
 
 class DriveViewSet(
-    RetrieveModelMixin, ListModelMixin, DestroyModelMixin, GenericViewSet
+    CreateModelMixin,
+    RetrieveModelMixin,
+    ListModelMixin,
+    DestroyModelMixin,
+    GenericViewSet,
 ):
 
     queryset = (
@@ -52,6 +60,14 @@ class DriveViewSet(
         return self.queryset.filter(
             models.Q(owner=self.request.user) | models.Q(members=self.request.user)
         ).distinct()
+
+    def create(self, request: HttpRequest, **kwargs) -> HttpResponse:
+        serializer = BaseDriveSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+        drive = serializer.save()
+        return Response(DriveSerializer(drive).data, status=HTTP_201_CREATED)
 
     def perform_destroy(self, instance):
         """Sets the drive to inactive"""

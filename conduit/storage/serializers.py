@@ -22,6 +22,33 @@ class UserDriveSerializer(serializers.ModelSerializer):
         return str(drive_size) + "GB"
 
 
+class BaseDriveSerializer(serializers.ModelSerializer):
+
+    members = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        write_only=True,
+        required=True,
+        many=True,
+    )
+
+    class Meta:
+        model = Drive
+        fields = ["name", "members"]
+
+    def create(self, validated_data):
+
+        members = validated_data.pop("members", [])
+        print(self.context.get("user"), flush=True)
+        drive = Drive.objects.create(
+            owner=self.context.get("user"),
+            name=validated_data.get("name"),
+            size=1.00,
+            used=0.00,
+        )
+        drive.members.add(*members)
+        return drive
+
+
 class DriveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Drive

@@ -55,6 +55,13 @@ class UserSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
 
+class BasicUserSeriailzer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["uid", "tag", "avatar"]
+        read_only_fields = ["uid", "tag", "avatar"]
+
+
 class LoginSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False, write_only=True)

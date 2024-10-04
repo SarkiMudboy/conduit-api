@@ -7,6 +7,7 @@ from .views import (
     SignOutView,
     SignUpView,
     UserRetrieveUpdateDestroyView,
+    UserSearchView,
 )
 
 router = DefaultRouter()
@@ -22,6 +23,8 @@ urlpatterns = [
     path("sign-up/", SignUpView.as_view(), name="sign-up"),
     path("sign-in/", SigninView.as_view(), name="sign-in"),
     path("sign-out/", SignOutView.as_view(), name="sign-out"),
+    # search
+    path("search/", UserSearchView.as_view({"get": "list"}), name="search"),
     # password recovery
     path(
         "request-reset-password/", request_password_reset, name="request-reset-password"

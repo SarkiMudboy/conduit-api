@@ -1,12 +1,14 @@
 from abstract.exceptions import BadRequestException
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
+from django.db.models import Q
 from django.http.request import HttpRequest
 from django.http.response import Http404, HttpResponse
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import status
 from rest_framework.mixins import (
     DestroyModelMixin,
+    ListModelMixin,
     RetrieveModelMixin,
     UpdateModelMixin,
 )
@@ -16,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import OTP
 from .serializers import (
+    BasicUserSeriailzer,
     ChangePasswordSerializer,
     ConfirmOTPSerializer,
     LoginSerializer,
@@ -80,6 +83,20 @@ class UserRetrieveUpdateDestroyView(
 
     def perform_destroy(self, instance: AbstractBaseUser) -> None:
         instance.delete()
+
+
+class UserSearchView(ListModelMixin, viewsets.GenericViewSet):
+
+    serializer_class = BasicUserSeriailzer
+    queryset = User.objects.filter(is_active=True)
+    permission_classes = [AllowAny]
+    lookup_url_kwarg = "key"
+
+    def get_queryset(self) -> list:
+        key = self.request.GET.get(self.lookup_url_kwarg)
+        if key:
+            return self.queryset.filter(Q(email__icontains=key) | Q(tag__icontains=key))
+        return []
 
 
 class SigninView(generics.GenericAPIView):

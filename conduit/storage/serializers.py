@@ -31,7 +31,7 @@ class DriveSerializer(serializers.ModelSerializer):
 class DriveObjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Object
-        fields = ["uid", "name", "size", "metadata", "path"]
+        fields = ["uid", "name", "size", "metadata", "path", "is_directory"]
 
 
 class DriveDetailSerializer(serializers.ModelSerializer):

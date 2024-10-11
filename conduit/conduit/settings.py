@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -206,7 +207,11 @@ REST_FRAMEWORK = {
     )
 }
 
-SIMPLE_JWT = {"USER_ID_FIELD": "uid"}
+SIMPLE_JWT = {
+    "USER_ID_FIELD": "uid",
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
 
 
 CELERY_TIMEZONE = "UTC"

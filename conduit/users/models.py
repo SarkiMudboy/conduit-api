@@ -18,7 +18,7 @@ from .managers import UserManager
 
 class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
 
-    email = models.EmailField(_("Email address"), unique=True)
+    email = models.EmailField(_("Email address"), null=True, unique=True)
     tag = models.CharField(
         _("User's tag"), max_length=300, null=True, blank=True, unique=True
     )

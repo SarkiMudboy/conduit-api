@@ -123,6 +123,12 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://redis:6379",
+    }
+}
 
 LOGGING = {
     "version": 1,
@@ -220,3 +226,8 @@ CELERY_TIMEZONE = "UTC"
 
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+
+GITHUB_OAUTH_CLIENT_ID = env("GITHUB_OAUTH_CLIENT_ID")
+GITHUB_OAUTH_CLIENT_SECRET = env("GITHUB_OAUTH_CLIENT_SECRET")
+# GITHUB_OAUTH_CALLBACK_URL='http://localhost:8000/api/v1/users/oauth/github/callback/'
+GITHUB_OAUTH_CALLBACK_URL = "http://localhost:5173/github-oauth-callback/"

@@ -1,6 +1,10 @@
+import secrets
+
 from abstract.exceptions import BadRequestException
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.cache import cache
 from django.db.models import Q
 from django.http.request import HttpRequest
 from django.http.response import Http404, HttpResponse
@@ -21,6 +25,7 @@ from .serializers import (
     BasicUserSeriailzer,
     ChangePasswordSerializer,
     ConfirmOTPSerializer,
+    GitHubCallbackSerializer,
     LoginSerializer,
     LogoutSerializer,
     PasswordResetSerializer,
@@ -133,6 +138,41 @@ class SignOutView(generics.GenericAPIView):
             code = status.HTTP_400_BAD_REQUEST
 
         return Response(status=code)
+
+
+# github oauth
+class GithubOAuthView(generics.GenericAPIView):
+
+    permission_classes = [AllowAny]
+
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+
+        state = secrets.token_urlsafe(16)
+        cache.set(state, 1, None)
+
+        return Response(
+            {
+                "callback": settings.GITHUB_OAUTH_CALLBACK_URL,
+                "client_id": settings.GITHUB_OAUTH_CLIENT_ID,
+                "state": state,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class GithubOAuthCallbackView(generics.GenericAPIView):
+
+    serializer_class = GitHubCallbackSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        data = request.data
+        serializer = self.serializer_class(data=data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        tokens = serializer.get_token(user)
+        # return HttpResponseRedirect('http://localhost:5173/files')
+        return Response(tokens, status=status.HTTP_200_OK)
 
 
 # password recovery

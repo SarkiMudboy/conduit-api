@@ -1,9 +1,15 @@
-from typing import Any, Dict, Optional
+import random
+import string
+from typing import Any, Dict, Optional, Tuple, Union
 
+import requests
 from abstract.utils import parse_querydict
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.core.cache import cache
 from django.utils import timezone
+from oauthlib.oauth2 import WebApplicationClient
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -98,6 +104,86 @@ class LogoutSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
+
+
+class GitHubCallbackSerializer(serializers.Serializer):
+
+    code = serializers.CharField()
+    state = serializers.CharField()
+
+    class Meta:
+        fields = ["code", "state"]
+
+    def validate_state(self, state: str) -> str:
+        if not cache.get(state):
+            raise serializers.ValidationError("Invalid state")
+
+    def get_access_token(
+        self, validated_data: Dict[str, Any]
+    ) -> Dict[str, Union[list, str]]:
+
+        token_url = "https://github.com/login/oauth/access_token"
+        client_id = settings.GITHUB_OAUTH_CLIENT_ID
+        client_secret = settings.GITHUB_OAUTH_CLIENT_SECRET
+
+        client = WebApplicationClient(client_id=client_id)
+
+        data = client.prepare_request_body(
+            code=validated_data.get("code"),
+            redirect_uri=settings.GITHUB_OAUTH_CALLBACK_URL,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+
+        response = requests.post(token_url, data=data)
+        client.parse_request_body_response(response.text)
+
+        return client.token
+
+    def get_user_github_profile(
+        self, token: Dict[str, Union[list, str]]
+    ) -> Dict[str, str]:
+
+        headers = {"Authorization": "token " + token.get("access_token")}
+
+        response = requests.get("https://api.github.com/user", headers=headers)
+        raw = response.json()
+
+        return {
+            "email": raw.get("email"),
+            "tag": f'{raw["name"]}{"".join(random.choices(string.ascii_lowercase, k=4))}{random.randint(100, 999)}',
+            "avatar": raw.get("avatar", ""),
+        }
+
+    def authenticate(self, creds: Dict[str, str]) -> Tuple[AbstractBaseUser, bool]:
+        """Checks if the user exists or is a new user, authenticates accordingly
+        params:
+            creds-> A dictionary of email, tag and avatar's url
+        return-> user: AbstractBaseUser, created: boolean (True if user was created/False if user exists)
+        """
+        user: Optional[AbstractBaseUser] = None
+        created: bool = False
+
+        if creds.get("email"):
+            try:
+                user = User.objects.get(email=creds.get("email"))
+            except User.DoesNotExist:
+                user = User.objects.create(**creds)
+                created = True
+        else:
+            raise ValueError("email is missing")
+        return user, created
+
+    def get_token(self, user: AbstractBaseUser) -> Dict[str, str]:
+        token = RefreshToken.for_user(user)
+        return {"refresh": str(token), "access": str(token.access_token)}
+
+    def save(self) -> AbstractBaseUser:
+
+        client_token = self.get_access_token(self.validated_data)
+        credentials = self.get_user_github_profile(client_token)
+        user, _ = self.authenticate(creds=credentials)
+        return user
 
 
 class PasswordResetSerializer(serializers.ModelSerializer):

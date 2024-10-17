@@ -1,6 +1,8 @@
 import secrets
+from typing import Dict
 
 from abstract.exceptions import BadRequestException
+from abstract.response import parse_response
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -43,11 +45,19 @@ class SignUpView(generics.GenericAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
 
+    def get_token(self, user: AbstractBaseUser) -> Dict[str, str]:
+        token = RefreshToken.for_user(user)
+        return {"refresh": str(token), "access": str(token.access_token)}
+
     def post(self, request: HttpRequest, **kwargs) -> HttpResponse:
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        user = serializer.save()
+        token = self.get_token(user)
+
+        return parse_response(
+            {"status": status.HTTP_201_CREATED, "data": serializer.data, "token": token}
+        )
 
 
 class UserRetrieveUpdateDestroyView(
@@ -118,7 +128,12 @@ class SigninView(generics.GenericAPIView):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        token = serializer.data.pop("token")
+
+        return parse_response(
+            {"status": status.HTTP_201_CREATED, "data": serializer.data, "token": token}
+        )
 
 
 class SignOutView(generics.GenericAPIView):

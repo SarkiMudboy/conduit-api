@@ -36,12 +36,12 @@ def parse_response(
 ) -> HttpResponse:
     """Custom response with auth tokens cookies injected into View Response"""
 
-    access_cookie = set_token_cookie("access", params.token.access)
-    refresh_cookie = set_token_cookie("refresh", params.token.refresh)
+    access_cookie = set_token_cookie("access", params["token"]["access"])
+    refresh_cookie = set_token_cookie("refresh", params["token"]["refresh"])
 
     response.set_cookie(**access_cookie)
     response.set_cookie(**refresh_cookie)
-    response.data = params.data
-    response.status = params.status
-
+    response.data = params.get("data")
+    response.status = params.get("status")
+    print(response.cookies, flush=True)
     return response

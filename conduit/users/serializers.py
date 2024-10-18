@@ -12,6 +12,8 @@ from django.utils import timezone
 from oauthlib.oauth2 import WebApplicationClient
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.exceptions import InvalidToken
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from storage.choices import DriveType
 from storage.serializers import UserDriveSerializer
@@ -27,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["uid", "email", "password", "tag", "avatar", "drive", "token"]
+        fields = ["uid", "email", "password", "tag", "avatar", "drive"]
         read_only_fields = ["uid"]
         extra_kwargs = {"tag": {"required": False}, "password": {"write_only": True}}
 
@@ -69,10 +71,11 @@ class LoginSerializer(serializers.ModelSerializer):
     password = serializers.CharField(required=True, write_only=True)
     tag = serializers.CharField(required=False, write_only=True)
     token = serializers.SerializerMethodField()
+    current_user = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["email", "tag", "password", "token"]
+        fields = ["email", "tag", "password", "token", "current_user"]
 
     def validate(self, attrs: Dict[str, str]) -> Dict[str, str]:
 
@@ -91,6 +94,12 @@ class LoginSerializer(serializers.ModelSerializer):
         user = data.get("user")
         token = RefreshToken.for_user(user)
         return {"refresh": str(token), "access": str(token.access_token)}
+
+    def get_current_user(self, data: Dict[str, str]) -> Dict[str, str]:
+        """returns user data here"""
+
+        user = data.get("user")
+        return BasicUserSeriailzer(user).data
 
 
 class LogoutSerializer(serializers.ModelSerializer):
@@ -248,3 +257,15 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
         if otp:
             otp.delete()
         return user
+
+
+class AppTokenRefreshSerializer(TokenRefreshSerializer):
+
+    refresh = None
+
+    def validate(self, attrs):
+        attrs["refresh"] = self.context["request"].COOKIES.get("refresh_token")
+        if attrs["refresh"]:
+            return super().validate(attrs)
+        else:
+            raise InvalidToken("No valid token found in cookie 'refresh_token'")

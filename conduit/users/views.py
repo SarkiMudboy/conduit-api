@@ -2,7 +2,7 @@ import secrets
 from typing import Dict
 
 from abstract.exceptions import BadRequestException
-from abstract.response import parse_response
+from abstract.response import parse_response, set_token_cookie
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -10,6 +10,8 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.http.request import HttpRequest
 from django.http.response import Http404, HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import status
 from rest_framework.mixins import (
@@ -21,9 +23,11 @@ from rest_framework.mixins import (
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from .models import OTP
 from .serializers import (
+    AppTokenRefreshSerializer,
     BasicUserSeriailzer,
     ChangePasswordSerializer,
     ConfirmOTPSerializer,
@@ -109,7 +113,7 @@ class UserSearchView(ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self) -> list:
         key = self.request.GET.get(self.lookup_url_kwarg)
-        if key:
+        if key and len(key) > 3:
             return self.queryset.filter(Q(email__icontains=key) | Q(tag__icontains=key))
         return []
 
@@ -129,10 +133,15 @@ class SigninView(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token = serializer.data.pop("token")
+        data = serializer.data
+        del data["token"]
 
         return parse_response(
-            {"status": status.HTTP_201_CREATED, "data": serializer.data, "token": token}
+            {
+                "status": status.HTTP_201_CREATED,
+                "data": data,
+                "token": serializer.data.pop("token"),
+            }
         )
 
 
@@ -253,4 +262,27 @@ class PasswordView(viewsets.GenericViewSet):
         return Response(status=status.HTTP_200_OK)
 
 
-# class
+class AppTokenRefreshView(TokenRefreshView):
+
+    serializer_class = AppTokenRefreshSerializer
+
+    def finalize_response(
+        self, request: HttpRequest, response: HttpResponse, *args, **kwargs
+    ):
+
+        if response.data.get("access"):
+            response.set_cookie(**set_token_cookie("access", response.data["access"]))
+            del response.data["access"]
+        return super().finalize_response(request, response, *args, **kwargs)
+
+
+class AppTokenVerifyView(TokenVerifyView):
+    @method_decorator(csrf_exempt)
+    def post(self, request, *args, **kwargs):
+
+        token = request.COOKIES.get("access_token")
+        if not token:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        _ = self.get_token(token)
+        return Response(status=status.HTTP_200_OK)

@@ -7,6 +7,7 @@ ENV PYTHONUNBUFFERED 1
 
 RUN apk add --update --virtual .build-deps \
     build-base \
+    libnss3-tools \
     postgresql-dev \
     python3-dev \
     libpq

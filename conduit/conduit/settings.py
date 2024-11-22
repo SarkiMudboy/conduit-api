@@ -36,6 +36,14 @@ ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173", "http://localhost:5173"]
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = ("http://localhost:5173", "http://localhost:5173")
+CORS_ALLOW_CREDENTIALS = True
+# CORS_ALLOW_HEADERS = (
+#     'Origin',
+#     'X-Requested-With',
+#     'Content-Type',
+#     'Accept',
+#     'authorization',
+# )
 
 
 # Application definition
@@ -223,7 +231,7 @@ SIMPLE_JWT = {
     "AUTH_COOKIE_SECURE": False,  # Whether the auth cookies should be secure (https:// only).
     "AUTH_COOKIE_HTTP_ONLY": True,  # Http only cookie flag.It's not fetch by javascript.
     "AUTH_COOKIE_PATH": "/",  # The path of the auth cookie.
-    "AUTH_COOKIE_SAMESITE": "None",  # Whether to set the flag restricting cookie leaks on cross-site requests. This can be 'Lax', 'Strict', or None to disable the flag.
+    "AUTH_COOKIE_SAMESITE": "Lax",  # Whether to set the flag restricting cookie leaks on cross-site requests. This can be 'Lax', 'Strict', or None to disable the flag.
 }
 
 

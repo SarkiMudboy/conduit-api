@@ -284,5 +284,5 @@ class AppTokenVerifyView(TokenVerifyView):
         if not token:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-        _ = self.get_token(token)
+        _ = self.get_user(token)
         return Response(status=status.HTTP_200_OK)

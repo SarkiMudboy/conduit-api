@@ -37,13 +37,16 @@ CSRF_TRUSTED_ORIGINS = ["http://localhost:5173", "http://localhost:5173"]
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = ("http://localhost:5173", "http://localhost:5173")
 CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOW_HEADERS = (
-#     'Origin',
-#     'X-Requested-With',
-#     'Content-Type',
-#     'Accept',
-#     'authorization',
-# )
+CORS_ALLOW_HEADERS = (
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "authorization",
+    "X-CSRFToken",
+    "x-csrftoken",
+    "X-CSRFTOKEN",
+)
 
 
 # Application definition

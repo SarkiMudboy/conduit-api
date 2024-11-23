@@ -43,5 +43,5 @@ def parse_response(
     response.set_cookie(**refresh_cookie)
     response.data = params.get("data")
     response.status = params.get("status")
-    print(response.cookies, flush=True)
+
     return response

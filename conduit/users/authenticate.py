@@ -14,9 +14,12 @@ def enforce_csrf(request: HttpRequest) -> None:
     Enforce CSRF Validation
     """
 
-    check = CSRFCheck()
+    def dummy_get_response(request) -> None:  # pragma: no cover
+        return None
+
+    check = CSRFCheck(dummy_get_response)
     check.process_request(request)
-    error = check.process_view(request, None)
+    error = check.process_view(request, None, (), {})
 
     if error:
         raise PermissionDenied(f"CSRF Failed: {error}")

@@ -22,7 +22,7 @@ from rest_framework.mixins import (
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, UntypedToken
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from .models import OTP
@@ -284,5 +284,9 @@ class AppTokenVerifyView(TokenVerifyView):
         if not token:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-        _ = self.get_user(token)
+        try:
+            _ = UntypedToken(token)
+        except Exception:
+            raise BadRequestException("An error occured")
+
         return Response(status=status.HTTP_200_OK)

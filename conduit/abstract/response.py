@@ -1,7 +1,7 @@
 from typing import Any, Dict, Literal, TypedDict
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from rest_framework.response import Response
 
 
@@ -43,5 +43,17 @@ def parse_response(
     response.set_cookie(**refresh_cookie)
     response.data = params.get("data")
     response.status = params.get("status")
+
+    return response
+
+
+def parse_redirect_response(tokens: Token, location: str) -> HttpResponseRedirect:
+
+    access_cookie = set_token_cookie("access", tokens.get("access"))
+    refresh_cookie = set_token_cookie("refresh", tokens.get("refresh"))
+
+    response = HttpResponseRedirect(location)
+    response.set_cookie(**access_cookie)
+    response.set_cookie(**refresh_cookie)
 
     return response

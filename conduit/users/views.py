@@ -2,7 +2,7 @@ import secrets
 from typing import Dict
 
 from abstract.exceptions import BadRequestException
-from abstract.response import parse_response, set_token_cookie
+from abstract.response import parse_redirect_response, parse_response, set_token_cookie
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -189,14 +189,15 @@ class GithubOAuthCallbackView(generics.GenericAPIView):
     serializer_class = GitHubCallbackSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        data = request.data
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        data = request.GET
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         tokens = serializer.get_token(user)
-        # return HttpResponseRedirect('http://localhost:5173/files')
-        return Response(tokens, status=status.HTTP_200_OK)
+        return parse_redirect_response(
+            tokens=tokens, location="http://localhost:5173/files"
+        )
 
 
 # password recovery

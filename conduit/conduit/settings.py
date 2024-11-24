@@ -247,5 +247,5 @@ CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
 
 GITHUB_OAUTH_CLIENT_ID = env("GITHUB_OAUTH_CLIENT_ID")
 GITHUB_OAUTH_CLIENT_SECRET = env("GITHUB_OAUTH_CLIENT_SECRET")
-# GITHUB_OAUTH_CALLBACK_URL='http://localhost:8000/api/v1/users/oauth/github/callback/'
-GITHUB_OAUTH_CALLBACK_URL = "http://localhost:5173/github-oauth-callback/"
+GITHUB_OAUTH_CALLBACK_URL = "http://localhost:8000/api/v1/users/oauth/github/callback/"
+# GITHUB_OAUTH_CALLBACK_URL = "http://localhost:5173/github-oauth-callback/"

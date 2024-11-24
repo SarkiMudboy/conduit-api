@@ -1,6 +1,8 @@
 import secrets
+from typing import Dict
 
 from abstract.exceptions import BadRequestException
+from abstract.response import parse_redirect_response, parse_response, set_token_cookie
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -8,6 +10,8 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.http.request import HttpRequest
 from django.http.response import Http404, HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import status
 from rest_framework.mixins import (
@@ -18,10 +22,12 @@ from rest_framework.mixins import (
 )
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, UntypedToken
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from .models import OTP
 from .serializers import (
+    AppTokenRefreshSerializer,
     BasicUserSeriailzer,
     ChangePasswordSerializer,
     ConfirmOTPSerializer,
@@ -43,11 +49,19 @@ class SignUpView(generics.GenericAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
 
+    def get_token(self, user: AbstractBaseUser) -> Dict[str, str]:
+        token = RefreshToken.for_user(user)
+        return {"refresh": str(token), "access": str(token.access_token)}
+
     def post(self, request: HttpRequest, **kwargs) -> HttpResponse:
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        user = serializer.save()
+        token = self.get_token(user)
+
+        return parse_response(
+            {"status": status.HTTP_201_CREATED, "data": serializer.data, "token": token}
+        )
 
 
 class UserRetrieveUpdateDestroyView(
@@ -99,7 +113,7 @@ class UserSearchView(ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self) -> list:
         key = self.request.GET.get(self.lookup_url_kwarg)
-        if key:
+        if key and len(key) > 3:
             return self.queryset.filter(Q(email__icontains=key) | Q(tag__icontains=key))
         return []
 
@@ -118,7 +132,17 @@ class SigninView(generics.GenericAPIView):
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        data = serializer.data
+        del data["token"]
+
+        return parse_response(
+            {
+                "status": status.HTTP_201_CREATED,
+                "data": data,
+                "token": serializer.data.pop("token"),
+            }
+        )
 
 
 class SignOutView(generics.GenericAPIView):
@@ -165,14 +189,15 @@ class GithubOAuthCallbackView(generics.GenericAPIView):
     serializer_class = GitHubCallbackSerializer
     permission_classes = [AllowAny]
 
-    def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        data = request.data
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        data = request.GET
         serializer = self.serializer_class(data=data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         tokens = serializer.get_token(user)
-        # return HttpResponseRedirect('http://localhost:5173/files')
-        return Response(tokens, status=status.HTTP_200_OK)
+        return parse_redirect_response(
+            tokens=tokens, location="http://localhost:5173/files"
+        )
 
 
 # password recovery
@@ -235,4 +260,34 @@ class PasswordView(viewsets.GenericViewSet):
         serializer = ChangePasswordSerializer(user, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response(status=status.HTTP_200_OK)
+
+
+class AppTokenRefreshView(TokenRefreshView):
+
+    serializer_class = AppTokenRefreshSerializer
+
+    def finalize_response(
+        self, request: HttpRequest, response: HttpResponse, *args, **kwargs
+    ):
+
+        if response.data.get("access"):
+            response.set_cookie(**set_token_cookie("access", response.data["access"]))
+            del response.data["access"]
+        return super().finalize_response(request, response, *args, **kwargs)
+
+
+class AppTokenVerifyView(TokenVerifyView):
+    @method_decorator(csrf_exempt)
+    def post(self, request, *args, **kwargs):
+
+        token = request.COOKIES.get("access_token")
+        if not token:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            _ = UntypedToken(token)
+        except Exception:
+            raise BadRequestException("An error occured")
+
         return Response(status=status.HTTP_200_OK)

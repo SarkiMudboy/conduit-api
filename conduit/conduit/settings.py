@@ -36,6 +36,17 @@ ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = ["http://localhost:5173", "http://localhost:5173"]
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = ("http://localhost:5173", "http://localhost:5173")
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = (
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "authorization",
+    "X-CSRFToken",
+    "x-csrftoken",
+    "X-CSRFTOKEN",
+)
 
 
 # Application definition
@@ -209,7 +220,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "users.authenticate.JWTTokenCookieAuthentication",
     )
 }
 
@@ -217,6 +228,13 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "uid",
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    # cookies
+    "AUTH_COOKIE": "access_token",  # Cookie name. Enables cookies if value is set.
+    "AUTH_COOKIE_DOMAIN": None,  # A string like "example.com", or None for standard domain cookie.
+    "AUTH_COOKIE_SECURE": False,  # Whether the auth cookies should be secure (https:// only).
+    "AUTH_COOKIE_HTTP_ONLY": True,  # Http only cookie flag.It's not fetch by javascript.
+    "AUTH_COOKIE_PATH": "/",  # The path of the auth cookie.
+    "AUTH_COOKIE_SAMESITE": "Lax",  # Whether to set the flag restricting cookie leaks on cross-site requests. This can be 'Lax', 'Strict', or None to disable the flag.
 }
 
 
@@ -229,5 +247,5 @@ CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
 
 GITHUB_OAUTH_CLIENT_ID = env("GITHUB_OAUTH_CLIENT_ID")
 GITHUB_OAUTH_CLIENT_SECRET = env("GITHUB_OAUTH_CLIENT_SECRET")
-# GITHUB_OAUTH_CALLBACK_URL='http://localhost:8000/api/v1/users/oauth/github/callback/'
-GITHUB_OAUTH_CALLBACK_URL = "http://localhost:5173/github-oauth-callback/"
+GITHUB_OAUTH_CALLBACK_URL = "http://localhost:8000/api/v1/users/oauth/github/callback/"
+# GITHUB_OAUTH_CALLBACK_URL = "http://localhost:5173/github-oauth-callback/"

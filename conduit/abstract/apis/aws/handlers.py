@@ -34,7 +34,7 @@ class S3AWSHandler:
         try:
             url = self.client.generate_presigned_url(
                 ClientMethod="get_object",
-                Params={"Bucket": bucket, "key": key},
+                Params={"Bucket": bucket, "Key": key},
                 ExpiresIn=1000,
             )
         except ClientError:

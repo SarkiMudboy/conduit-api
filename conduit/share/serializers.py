@@ -26,8 +26,8 @@ class UploadPresignedURLSerializer(serializers.Serializer):
         fields = super().get_fields()
         if fields.get("resource"):
             filters = {
-                "owner": self.context.get("owner"),
-                "drive__uid": self.context.get("drive"),
+                # we may add more filters later
+                "drive__uid": self.context.get("drive").uid,
             }
             fields["resource"].queryset = Object.objects.filter(**filters)
         return fields

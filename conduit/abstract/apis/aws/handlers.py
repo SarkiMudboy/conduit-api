@@ -2,6 +2,7 @@ import logging
 import os
 
 import boto3
+from botocore.exceptions import ClientError
 
 bucket = os.getenv("AWS_BUCKET_NAME")
 logger = logging.getLogger("abstract")
@@ -27,3 +28,16 @@ class S3AWSHandler:
             self.client.put_object(Bucket=bucket, Key=path)
         except Exception as e:
             logger.exception(f"Error creating folder -> {str(e)}")
+
+    def get_upload_presigned_url(self, key: str) -> str:
+
+        try:
+            url = self.client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": bucket, "Key": key},
+                ExpiresIn=1000,
+            )
+        except ClientError:
+            logger.exception("Couldn't get a presigned URL for object '%s'.", key)
+
+        return url

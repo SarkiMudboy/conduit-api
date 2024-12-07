@@ -8,10 +8,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.cache import cache
 from django.db.models import Q
+from django.http import JsonResponse
 from django.http.request import HttpRequest
 from django.http.response import Http404, HttpResponse
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import status
 from rest_framework.mixins import (
@@ -41,6 +43,12 @@ from .throttle import PasswordThrottle
 from .utils import retrieve_email_from_token
 
 User = get_user_model()
+
+
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def set_csrf_token(request: HttpRequest) -> JsonResponse:
+    return JsonResponse({"message": "CSRFtoken is set"})
 
 
 class SignUpView(generics.GenericAPIView):

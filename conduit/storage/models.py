@@ -8,7 +8,7 @@ from storage.choices import DriveType
 
 def upload_file_to_user_drive(file: "Object", filename: str) -> str:
     """Dir for upload"""
-    return f"{file.drive.owner.tag}/{file.drive.name}/{file.path}"
+    return f"{file.drive.owner.tag}/{file.drive.name}/{file.path}/{filename}"
 
 
 class Drive(TimestampUUIDMixin):
@@ -71,7 +71,9 @@ class Object(TimestampUUIDMixin):
     content = models.ManyToManyField(
         "self", blank=True, related_name="in_directory", symmetrical=False
     )
-    path = models.CharField(_("AWS path : key"), max_length=2000, null=True, blank=True)
+    path = models.CharField(
+        _("AWS path : key"), default="new", max_length=2000, null=True, blank=True
+    )
     filesystem_path = models.CharField(
         _("Local path"), max_length=2000, null=True, blank=True
     )
@@ -82,3 +84,7 @@ class Object(TimestampUUIDMixin):
 
     def __str__(self) -> str:
         return self.name + " - " + self.drive.name
+
+    def get_file_path(self, new_filepath: str) -> str:
+        """Dir for upload"""
+        return f"{self.drive.owner.tag}/{self.drive.name}/{self.path}/{new_filepath}"

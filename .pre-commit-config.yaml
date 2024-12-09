@@ -16,6 +16,7 @@ repos:
       - id: check-toml
 
       - id: end-of-file-fixer
+        exclude: \.md$
       - id: check-merge-conflict
       - id: debug-statements
       - id: detect-private-key

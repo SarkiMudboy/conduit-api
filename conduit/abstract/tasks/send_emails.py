@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 from celery import shared_task
 from django.core.mail import EmailMessage
 
-from ..apis.aws.handlers import AWSClientFactory
+from ..apis.aws.services import AWSClientFactory
 
 client = AWSClientFactory.build_client("ses")
 logger = logging.getLogger("abstract")

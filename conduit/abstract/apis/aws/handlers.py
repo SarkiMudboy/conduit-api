@@ -37,9 +37,7 @@ class S3AWSHandler:
 
         return ""
 
-    def get_upload_presigned_url(
-        self, file_obj: FileObject, root: str = None
-    ) -> FileObject:
+    def get_upload_presigned_url(self, file_obj: FileObject, root: str = None) -> None:
 
         full_path = file_obj["path"] if not root else root + file_obj["path"]
         logger.info(f"Processing file : {full_path}")
@@ -51,25 +49,28 @@ class S3AWSHandler:
     def fetch_urls(
         self, file_objects: List[FileObject], root: str = None
     ) -> List[FileObject]:
-        files = []
+        files: List[FileObject] = []
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=len(file_objects) + 1
-        ) as exec:
-            futures = [
-                exec.submit(self.get_upload_presigned_url, file, root)
-                for file in file_objects
-            ]
+        if len(file_objects) > 2:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(32, len(file_objects) // 2)
+            ) as exec:
+                futures = [
+                    exec.submit(self.get_upload_presigned_url, file, root)
+                    for file in file_objects
+                ]
 
-            for f in futures:
-                f.result()
+                for f in futures:
+                    f.result()
 
-        while not self.queue.empty():
-            files.append(self.queue.get())
+            while not self.queue.empty():
+                files.append(self.queue.get())
+
+        else:
+            for file_obj in file_objects:
+                full_path = file_obj["path"] if not root else root + file_obj["path"]
+                file_obj["url"] = self._get_upload_presigned_url(full_path)
+                files.append(file_obj)
 
         # print(files)
         return files
-
-
-# add the method that handles the pool here... if its just a file handles it
-# normally but if > 1 use TP. returns the list -> serializer.

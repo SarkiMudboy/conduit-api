@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "abstract",
     "storage",
     "share",
+    "file_tree",
     # third-party
     "corsheaders",
     "rest_framework",

@@ -1,6 +1,7 @@
 from typing import List, Literal, Set
 
 from django.db import models
+from typing_extensions import Union
 
 
 class Node:
@@ -10,12 +11,12 @@ class Node:
         self.name = name
         self.size = size
         self.type = type
-        self.path = name if self.type == "root" else ""
+        self.path = name
         self._children: Set[Node] = set()
 
         self.db_instance: models.Model = None
 
-    def add_node(self, *node: list) -> set:
+    def add_node(self, *node: list) -> list:
 
         if not node:
             raise ValueError("Invalid Node")
@@ -23,10 +24,10 @@ class Node:
         new_nodes = {*node} - self._children
         self._children = self._children.union({*node})
 
-        return new_nodes
+        return list(new_nodes)
 
     def add_path(self, parent_path: str) -> None:
-        self.path += parent_path + "/" + self.name
+        self.path = parent_path + "/" + self.name
 
     def __repr__(self):
         return self.name
@@ -46,7 +47,7 @@ class Tree:
     def __contains__(self, val: str):
         return val in self.node_ids
 
-    def __getitem__(self, val: str) -> Node:
+    def __getitem__(self, val: str) -> Union[Node, False]:
         for node in self.nodes:
             if node.name == val:
                 return node
@@ -60,5 +61,4 @@ class Tree:
         if not self[root]:
             self += Node(root, 0, "root")
             self.node_ids.append(root)
-            S.pop(0)
         return S

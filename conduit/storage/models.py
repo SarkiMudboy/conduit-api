@@ -1,3 +1,5 @@
+from typing import Optional
+
 from abstract.models import TimestampUUIDMixin
 from django.db import models
 
@@ -85,6 +87,8 @@ class Object(TimestampUUIDMixin):
     def __str__(self) -> str:
         return self.name + " - " + self.drive.name
 
-    def get_file_path(self, new_filepath: str) -> str:
+    def get_file_path(self, new_filepath: str, author: Optional[str] = None) -> str:
         """Dir for upload"""
-        return f"{self.drive.owner.tag}/{self.drive.name}/{self.path}/{new_filepath}"
+        if not author:
+            author = self.owner.tag
+        return f"{author}/{self.drive.name}/{self.path}/{new_filepath}"

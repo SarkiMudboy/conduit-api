@@ -3,7 +3,7 @@
 default_language_version:
   python: python3.11
 
-exclude: .*migrations\/.* , settings\/.*, .platform\/.*, .cloudformation\/.*, .ebextensions\/.*, .dockerfile, .docker\/.*, .*.app.py, '.*static\/.*', '.*templates\/.*', .*.__init__.py,
+exclude: .*migrations\/.* , settings\/.*, .platform\/.*, .cloudformation\/.*, .ebextensions\/.*, .dockerfile, .docker\/.*, .*.app.py, '.*static\/.*', '.*templates\/.*', .*.__init__.py, .*.md,
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -16,6 +16,7 @@ repos:
       - id: check-toml
 
       - id: end-of-file-fixer
+        exclude: \.md$
       - id: check-merge-conflict
       - id: debug-statements
       - id: detect-private-key

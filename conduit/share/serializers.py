@@ -7,19 +7,29 @@ from storage.models import Object
 
 class FileDataSerializer(serializers.Serializer):
 
+    id = serializers.CharField(max_length=36, required=True)
     filename = serializers.CharField(max_length=2000)
     filesize = serializers.IntegerField(required=True)
+    path = serializers.CharField(max_length=2000, required=True)
+    # metadata
 
     # validate size and depth of dir here...
 
 
+class PresignedURLSerializer(serializers.Serializer):
+
+    id = serializers.CharField(max_length=36, required=True)
+    url = serializers.URLField(allow_blank=True)
+
+
 class UploadPresignedURLSerializer(serializers.Serializer):
 
-    file = FileDataSerializer(many=True, required=True)
+    files = FileDataSerializer(many=True, required=True)
     resource = serializers.PrimaryKeyRelatedField(
         queryset=Object.objects.all(),
         required=False,
     )
+    bulk = serializers.BooleanField()
 
     def get_fields(self):
 
@@ -34,13 +44,10 @@ class UploadPresignedURLSerializer(serializers.Serializer):
 
     def get_url(self) -> str:
 
-        key = self.validated_data.get("file")[0]["filename"]
-
-        # append the dir path here
-        object: Optional[Object] = self.validated_data.get("resource")
-        if object:
-            key = object.get_file_path(key)
-
-        key = f'{self.context.get("drive")}/{key}'
+        objs = self.validated_data.get("files")
+        root = f'{self.context.get("drive")}/'
+        if self.validated_data.get("resource"):
+            object: Optional[Object] = self.validated_data.get("resource")
+            root = object.get_file_path(root)
         handler = S3AWSHandler()
-        return handler.get_upload_presigned_url(key)
+        return handler.fetch_urls(objs, root)

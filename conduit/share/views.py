@@ -8,7 +8,7 @@ from rest_framework.viewsets import ViewSet
 from storage.models import Drive
 from storage.permissions import IsDriveOwnerOrMember
 
-from .serializers import UploadPresignedURLSerializer
+from .serializers import PresignedURLSerializer, UploadPresignedURLSerializer
 
 
 class ShareViewSet(ViewSet):
@@ -33,5 +33,7 @@ class ShareViewSet(ViewSet):
             context={"drive": self.get_object(), "owner": request.user},
         )
         serializer.is_valid(raise_exception=True)
-        url = serializer.get_url()
-        return Response(data={"url": url}, status=status.HTTP_200_OK)
+        urls = serializer.get_url()
+        return Response(
+            PresignedURLSerializer(urls, many=True).data, status=status.HTTP_200_OK
+        )

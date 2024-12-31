@@ -1,4 +1,6 @@
 import logging
+
+# import time
 from typing import List, Optional, TypedDict
 
 from django.contrib.auth import get_user_model
@@ -21,10 +23,9 @@ class UploadedFile(TypedDict):
     resource_id: Optional[str]
 
 
-def parse_tree(file_data: UploadedFile, db_conn_alias: str = "default") -> List[Object]:
+def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]:
 
-    setup_db_connection(db_conn_alias)
-
+    db_conn_alias = setup_db_connection(db_conn_alias)
     tree: List[Object] = []
     try:
         with transaction.atomic(using=db_conn_alias):
@@ -90,11 +91,10 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "default") -> List[
         Drive.DoesNotExist,
         Exception,
     ) as e:
-        print(str(e), flush=True)
         logger.error(f'Error parsing file : {file_data["filepath"]}, {str(e)}')
         return []
 
-    if db_conn_alias != "default":
+    if db_conn_alias not in ["default", "test_conduit"]:
         delete_connection(db_conn_alias)
 
     return tree

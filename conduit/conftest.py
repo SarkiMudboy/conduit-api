@@ -33,11 +33,11 @@ def tokens(conduit_user: Optional[AbstractBaseUser] = None) -> Dict[str, Any]:
 def tree_paths() -> List[str]:
 
     return [
-        "home/living/table_top/coffee_book.txt",
         "home/living/entertainment/smart_tv.jpg",
         "home/kitchen/fridge/fruits.json",
         "home/living/table_top/remote.jpg",
         "home/kitchen/cooker/pot.png",
+        "home/living/table_top/coffee_book.txt",
     ]
 
 

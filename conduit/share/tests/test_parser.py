@@ -29,7 +29,7 @@ def build(root: Object, data: Dict[str, list]) -> Dict[str, list]:
     return data
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestParser:
     def test_file_tree_is_created_properly(
         self, tree_paths, tree_nodes, tree_child_nodes
@@ -71,13 +71,47 @@ class TestParser:
         file = UploadedFile(
             author=author.email,
             file_id=uuid.uuid4(),
-            resource_id="1234",
+            resource_id=uuid.uuid4(),
             drive_id=drive.pk,
         )
 
-        with pytest.raises(Object.DoesNotExist):
-            file["filepath"] = tree_paths[0]
-            parse_tree(file)
+        file["filepath"] = tree_paths[0]
+        tree = parse_tree(file)
+        assert len(tree) == 0
+
+    def test_filepaths_with_identical_nested_filenames(self):
+
+        author = UserFactory.create()
+        drive = DriveFactory.create(owner=author)
+
+        paths = [
+            "new/user/docs/docs/docs/homework.txt",
+            "new/user/docs/docs/homework.txt",
+        ]
+
+        file = UploadedFile(
+            author=author.email,
+            file_id=uuid.uuid4(),
+            resource_id=None,
+            drive_id=drive.pk,
+        )
+
+        for p in paths:
+
+            file["filepath"] = p
+            tree = parse_tree(file)
+            assert len(tree) != 0
+
+        assert (
+            Object.objects.filter(name="docs", owner=author, drive=drive).count() == 3
+        )
+
+        assert (
+            Object.objects.filter(
+                name="homework.txt", owner=author, drive=drive
+            ).count()
+            == 2
+        )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -100,13 +134,22 @@ class TestParserConcurrency:
             for path in tree_paths
         ]
 
-        with concurrent.futures.ProcessPoolExecutor(max_workers=2) as process_exec:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=4) as process_exec:
 
-            for pos, file_data in enumerate(test_paths):
-                uploaded_file = partial(parse_tree, file_data=file_data)
-                futures.append(
-                    process_exec.submit(uploaded_file(db_conn_alias=f"conn{str(pos)}"))
+            # for pos, file_data in enumerate(test_paths):
+            # for file_data in test_paths:
+            #     futures.append(process_exec.submit(uploaded_file()))
+
+            futures = [
+                process_exec.submit(
+                    partial(
+                        parse_tree,
+                        file_data=file_data,
+                        db_conn_alias=f"conn{pos}",
+                    )
                 )
+                for pos, file_data in enumerate(test_paths)
+            ]
 
             for f in futures:
                 if not f:

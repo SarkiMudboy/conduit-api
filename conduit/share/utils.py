@@ -4,8 +4,12 @@ from django.db import connections
 db_config = settings.DATABASES["default"]
 
 
-def setup_db_connection(alias: str):
-    connections.databases[alias] = db_config
+def setup_db_connection(alias: str) -> str:
+    if alias:
+        connections.databases[alias] = db_config
+    else:
+        return "default"
+    return alias
 
 
 def delete_connection(alias: str) -> None:

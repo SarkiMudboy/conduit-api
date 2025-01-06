@@ -28,10 +28,14 @@ class S3AWSHandler:
 
         try:
             return self.client.generate_presigned_url(
-                ClientMethod="get_object",
+                ClientMethod="put_object",
                 Params={"Bucket": bucket, "Key": key},
                 ExpiresIn=1000,
             )
+
+            # return self.client.generate_presigned_post(
+            #     bucket, key, Fields=None, Conditions=None, ExpiresIn=1000
+            # )
         except ClientError:
             logger.info("Couldn't get a presigned URL for object '%s'.", key)
 

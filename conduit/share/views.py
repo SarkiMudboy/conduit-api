@@ -1,5 +1,8 @@
+import json
+
 from django.http import HttpRequest
 from django.shortcuts import HttpResponse
+from rest_framework import generics
 from rest_framework.decorators import action
 from rest_framework.exceptions import status
 from rest_framework.permissions import IsAuthenticated
@@ -35,5 +38,21 @@ class ShareViewSet(ViewSet):
         serializer.is_valid(raise_exception=True)
         urls = serializer.get_url()
         return Response(
-            PresignedURLSerializer(urls, many=True).data, status=status.HTTP_200_OK
+            PresignedURLSerializer(urls, many=True).data,
+            status=status.HTTP_200_OK,
         )
+
+
+class StorageObjectEventWebhookView(generics.GenericAPIView):
+    def post(self, request: HttpRequest) -> HttpResponse:
+
+        data = request.body.decode("utf-8")
+        if request.headers.get("x-amz-sns-message-type") == "SubscriptionConfirmation":
+            print(json.loads(data), flush=True)
+        else:
+            sns_event_notification = json.loads(data)
+
+            message = json.loads(sns_event_notification["Message"])
+            print(message, flush=True)
+
+        return Response(200)

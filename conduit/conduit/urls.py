@@ -23,6 +23,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/users/", include("users.urls")),
     path("api/v1/drives/", include("storage.urls")),
+    path("api/v1/share/", include("share.urls")),
 ]
 
 urlpatterns = add_jwt_urls(urlpatterns)

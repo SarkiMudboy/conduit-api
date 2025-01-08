@@ -136,10 +136,6 @@ class TestParserConcurrency:
 
         with concurrent.futures.ProcessPoolExecutor(max_workers=4) as process_exec:
 
-            # for pos, file_data in enumerate(test_paths):
-            # for file_data in test_paths:
-            #     futures.append(process_exec.submit(uploaded_file()))
-
             futures = [
                 process_exec.submit(
                     partial(

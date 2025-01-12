@@ -30,27 +30,23 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]
     try:
         with transaction.atomic(using=db_conn_alias):
             """We are locking the 'drive' row here to allow safe concurrent access and prevent data races"""
-            print(
-                f'attempting to get lock for {file_data["filepath"]}',
-                flush=True,
-            )
             drive = (
                 Drive.objects.using(db_conn_alias)
                 .select_for_update()
                 .get(pk=file_data["drive_id"])
-            )
-            print(
-                f'Lock acquired for {file_data["filepath"]}, drive-> {drive.name}',
-                flush=True,
             )
             author = User.objects.using(db_conn_alias).get(email=file_data["author"])
             parent_path = ""
 
             ids: List[str] = []
             ids += file_data["filepath"].split("/")
+            leaf = ids[-1]
+            print(
+                f'Start processing {file_data["filepath"]}, Last file-> {leaf}',
+                flush=True,
+            )
 
             # set root if a resource exists
-
             if file_data.get("resource_id"):
                 parent = (
                     Object.objects.using(db_conn_alias)
@@ -69,6 +65,9 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]
                 args["path"] = (
                     f"{tree[-1].path}/{obj}" if tree else f"{parent_path}/{obj}"
                 )
+
+                if obj != leaf:
+                    args["is_directory"] = True
 
                 if Object.objects.using(db_conn_alias).filter(**args).exists():
                     file_object = (

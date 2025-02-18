@@ -56,7 +56,6 @@ class BaseDriveSerializer(serializers.ModelSerializer):
         drive = Drive.objects.create(
             owner=self.context.get("user"),
             name=validated_data.get("name"),
-            size=1.00,
             used=0.00,
         )
         drive.members.add(*members)
@@ -66,13 +65,21 @@ class BaseDriveSerializer(serializers.ModelSerializer):
 class DriveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Drive
-        fields = ["uid", "name", "size", "used", "type"]
+        fields = ["uid", "name", "size", "used", "type", "created_at"]
 
 
 class DriveObjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Object
-        fields = ["uid", "name", "size", "metadata", "path", "is_directory"]
+        fields = [
+            "uid",
+            "name",
+            "size",
+            "metadata",
+            "path",
+            "is_directory",
+            "created_at",
+        ]
 
 
 class DriveDetailSerializer(serializers.ModelSerializer):
@@ -95,7 +102,8 @@ class DriveDetailSerializer(serializers.ModelSerializer):
 class AddDriveMemberSerializer(serializers.ModelSerializer):
 
     members = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(is_active=True, is_superuser=False), many=True
+        queryset=User.objects.filter(is_active=True, is_superuser=False),
+        many=True,
     )
 
     class Meta:

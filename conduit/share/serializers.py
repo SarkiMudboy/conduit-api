@@ -13,7 +13,7 @@ class FileDataSerializer(serializers.Serializer):
     id = serializers.CharField(max_length=36, required=True)
     filename = serializers.CharField(max_length=2000)
     filesize = serializers.IntegerField(required=True)
-    path = serializers.CharField(max_length=2000, required=True)
+    path = serializers.CharField(max_length=2000, required=True, allow_blank=True)
     # metadata
 
     # validate size and depth of dir here...
@@ -53,15 +53,10 @@ class UploadPresignedURLSerializer(serializers.Serializer):
         )
 
     def get_file_upload_metadata(self) -> Dict[str, str]:
-        file_upload_metadata = {
-            "x-amz-meta-owner_email": self._metadata["owner_email"],
-            "x-amz-meta-drive_id": self._metadata["drive_id"],
-        }
 
-        if self._metadata.get("resource_id"):
-            file_upload_metadata["x-amz-meta-resource_id"] = self._metadata[
-                "resource_id"
-            ]
+        file_upload_metadata = {}
+        for metadata in self._metadata.keys():
+            file_upload_metadata["x-amz-meta-" + metadata] = self._metadata[metadata]
 
         return file_upload_metadata
 

@@ -68,12 +68,19 @@ class SignUpView(generics.GenericAPIView):
         token = self.get_token(user)
 
         return parse_response(
-            {"status": status.HTTP_201_CREATED, "data": serializer.data, "token": token}
+            {
+                "status": status.HTTP_201_CREATED,
+                "data": serializer.data,
+                "token": token,
+            }
         )
 
 
 class UserRetrieveUpdateDestroyView(
-    RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin, viewsets.GenericViewSet
+    RetrieveModelMixin,
+    UpdateModelMixin,
+    DestroyModelMixin,
+    viewsets.GenericViewSet,
 ):
 
     serializer_class = UserSerializer

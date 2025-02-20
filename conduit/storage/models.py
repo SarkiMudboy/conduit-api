@@ -23,8 +23,13 @@ class Drive(TimestampUUIDMixin):
     type = models.CharField(
         _("Drive type"), choices=DriveType.choices, default=DriveType.SHARED
     )
-    size = models.FloatField(_("Drive size (kb)"), null=True, blank=True)
-    used = models.FloatField(_("Space used (kb)"), null=True, blank=True)
+    size = models.FloatField(
+        _("Drive size (kb)"),
+        default=float(5 * 1024 * 1024 * 1024),
+        null=True,
+        blank=True,
+    )
+    used = models.FloatField(_("Space used (kb)"), default=0.0, null=True, blank=True)
     members = models.ManyToManyField("users.User")
     is_active = models.BooleanField(default=True)
 
@@ -41,7 +46,8 @@ class Drive(TimestampUUIDMixin):
         """Verify that the drive is unique for personal"""
 
         if (
-            self.type == DriveType.PERSONAL
+            self.pk is None
+            and self.type == DriveType.PERSONAL
             and Drive.objects.filter(owner=self.owner, type=DriveType.PERSONAL).exists()
         ):
             raise ValueError("A user can only have one personal drive.")
@@ -74,7 +80,11 @@ class Object(TimestampUUIDMixin):
         "self", blank=True, related_name="in_directory", symmetrical=False
     )
     path = models.CharField(
-        _("AWS path : key"), default="new", max_length=2000, null=True, blank=True
+        _("AWS path : key"),
+        default="new",
+        max_length=2000,
+        null=True,
+        blank=True,
     )
     filesystem_path = models.CharField(
         _("Local path"), max_length=2000, null=True, blank=True

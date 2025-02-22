@@ -54,6 +54,7 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]
                     .get(pk=file_data.get("resource_id"), drive=drive)
                 )
                 parent_path = parent.path
+                tree.append(parent)
 
             for obj in ids:
 

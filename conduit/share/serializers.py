@@ -63,14 +63,21 @@ class UploadPresignedURLSerializer(serializers.Serializer):
     def get_url(self) -> List[str]:
 
         objs = self.validated_data.get("files")
-        root = f'{self.context.get("drive")}/'
+        root = f'{self.context.get("drive")}'
 
         self.set_metadata()
 
         if self.validated_data.get("resource"):
             object: Optional[Object] = self.validated_data.get("resource")
-            root = object.get_file_path(root)
+
+            if not object.is_directory:
+                raise serializers.ValidationError("Resource is not a directory")
+            root += object.get_file_path()
+
+            print(">>>->>>>", root, flush=True)
             self._metadata["resource_id"] = str(object.pk)
+        else:
+            root += "/"
 
         handler = S3AWSHandler()
         return handler.fetch_urls(objs, root, self._metadata)

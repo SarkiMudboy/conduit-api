@@ -74,7 +74,6 @@ class UploadPresignedURLSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Resource is not a directory")
             root += object.get_file_path()
 
-            print(">>>->>>>", root, flush=True)
             self._metadata["resource_id"] = str(object.pk)
         else:
             root += "/"

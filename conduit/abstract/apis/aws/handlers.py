@@ -64,7 +64,7 @@ class S3AWSHandler:
     ) -> List[FileObject]:
         files: List[FileObject] = []
 
-        if len(file_objects) > 2:
+        if len(file_objects) > 10:
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=min(32, len(file_objects) // 2)
             ) as exec:
@@ -81,10 +81,10 @@ class S3AWSHandler:
 
         else:
             for file_obj in file_objects:
+
                 full_path = file_obj["path"] if not root else root + file_obj["path"]
                 metadata["file_path"] = file_obj["path"]
                 file_obj["url"] = self._get_upload_presigned_url(full_path, metadata)
                 files.append(file_obj)
 
-        # print(files)
         return files

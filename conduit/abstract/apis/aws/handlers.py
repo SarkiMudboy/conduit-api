@@ -50,7 +50,10 @@ class S3AWSHandler:
         full_path = file_obj["path"] if not root else root + file_obj["path"]
         logger.info(f"Processing file : {full_path}")
 
-        metadata["file_path"] = file_obj["path"]
+        metadata["file_path"], metadata["filesize"] = (
+            file_obj["path"],
+            str(file_obj["filesize"]),
+        )
         url = self._get_upload_presigned_url(full_path, metadata)
         file_obj["url"] = url
 
@@ -83,7 +86,10 @@ class S3AWSHandler:
             for file_obj in file_objects:
 
                 full_path = file_obj["path"] if not root else root + file_obj["path"]
-                metadata["file_path"] = file_obj["path"]
+                metadata["file_path"], metadata["filesize"] = (
+                    file_obj["path"],
+                    str(file_obj["filesize"]),
+                )
                 file_obj["url"] = self._get_upload_presigned_url(full_path, metadata)
                 files.append(file_obj)
 

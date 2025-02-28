@@ -14,7 +14,6 @@ class FileDataSerializer(serializers.Serializer):
     filename = serializers.CharField(max_length=2000)
     filesize = serializers.IntegerField(required=True)
     path = serializers.CharField(max_length=2000, required=True, allow_blank=True)
-    # metadata
 
     # validate size and depth of dir here...
 

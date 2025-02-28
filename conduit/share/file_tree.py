@@ -19,6 +19,7 @@ class UploadedFile(TypedDict):
     author: str
     file_id: str
     filepath: str
+    filesize: int
     drive_id: str
     resource_id: Optional[str]
 
@@ -58,6 +59,7 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]
 
             for obj in ids:
 
+                size = int(file_data["filesize"])
                 args = {
                     "owner": author,
                     "drive": drive,
@@ -76,7 +78,10 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]
                         .prefetch_related("content")
                         .get(**args)
                     )
+                    file_object.size += size
+                    file_object.save()
                 else:
+                    args["size"] = size
                     file_object = Object.objects.using(db_conn_alias).create(**args)
 
                 if tree and file_object not in tree[-1].content.all():

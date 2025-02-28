@@ -5,7 +5,7 @@ from .views import StorageObjectEventWebhookView
 # webhook
 urlpatterns = [
     path(
-        "process-strorage-event/",
+        "process-storage-event/",
         StorageObjectEventWebhookView.as_view(),
         name="storage-event",
     )

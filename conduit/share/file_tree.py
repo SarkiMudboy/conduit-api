@@ -126,14 +126,15 @@ class FilePath:
             share_obj.assets.add(self.file_shared.uid)
 
         else:
-            share_obj = Share.objects.create(**args)  # fix this with single '_'
+            share_obj = Share.objects.create(**args)
             share_obj.assets.add(self.file_shared.uid)
 
         # calculate total drive usage
 
-        usage = Object.objects.filter(
-            in_directory__isnull=True, drive=self.drive
-        ).aggregate(used_size=Sum("size"))
+        usage = self.drive.storage_object.filter(in_directory__isnull=True).aggregate(
+            used_size=Sum("size")
+        )
+
         self.drive.used = usage["used_size"]
         self.drive.save()
 

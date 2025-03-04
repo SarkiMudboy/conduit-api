@@ -74,7 +74,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampUUIDMixin):
             owner=self,
             name=self.tag + " - drive",
             type=DriveType.PERSONAL,
-            size=5000000.0,
             used=0.0,
         )
 

@@ -1,11 +1,13 @@
 import logging
 
 # import time
-from typing import List, Optional, TypedDict
+from typing import List, Optional
 
+from abstract.apis.aws.types import FileMetaData
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import IntegrityError, transaction
+from share.models import Share
 from storage.models import Drive, Object
 
 from .utils import delete_connection, setup_db_connection
@@ -14,67 +16,65 @@ User: AbstractBaseUser = get_user_model()
 logger = logging.getLogger("storage")
 
 
-class UploadedFile(TypedDict):
+class FilePath:
+    def __init__(self, metadata: FileMetaData, db_conn_alias: str = "") -> None:
 
-    author: str
-    file_id: str
-    filepath: str
-    filesize: int
-    drive_id: str
-    resource_id: Optional[str]
+        self.db_conn_alias = setup_db_connection(db_conn_alias)
 
+        self.metadata = metadata
 
-def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]:
+        self.tree: List[Object] = []
+        self.parent_path = ""
+        self.ids: List[str] = []
+        self.ids += metadata["file_path"].split("/")
+        self.leaf = self.ids[-1]
+        self.file_shared: Optional[Object] = None
 
-    db_conn_alias = setup_db_connection(db_conn_alias)
-    tree: List[Object] = []
-    try:
-        with transaction.atomic(using=db_conn_alias):
-            """We are locking the 'drive' row here to allow safe concurrent access and prevent data races"""
-            drive = (
-                Drive.objects.using(db_conn_alias)
+        self.drive: Optional[Drive] = None
+        self.author: Optional[AbstractBaseUser] = None
+
+    @transaction.atomic
+    def parse_path(self):
+        try:
+            self.drive = (
+                Drive.objects.using(self.db_conn_alias)
                 .select_for_update()
-                .get(pk=file_data["drive_id"])
+                .get(pk=self.metadata["drive_id"])
             )
-            author = User.objects.using(db_conn_alias).get(email=file_data["author"])
-            parent_path = ""
-
-            ids: List[str] = []
-            ids += file_data["filepath"].split("/")
-            leaf = ids[-1]
-            print(
-                f'Start processing {file_data["filepath"]}, Last file-> {leaf}',
-                flush=True,
+            self.author = User.objects.using(self.db_conn_alias).get(
+                uid=self.metadata["author"]
             )
 
             # set root if a resource exists
-            if file_data.get("resource_id"):
+            if self.metadata.get("resource_id"):
                 parent = (
-                    Object.objects.using(db_conn_alias)
+                    Object.objects.using(self.db_conn_alias)
                     .select_for_update()
-                    .get(pk=file_data.get("resource_id"), drive=drive)
+                    .get(pk=self.metadata.get("resource_id"), drive=self.drive)
                 )
-                parent_path = parent.path
-                tree.append(parent)
+                self.parent_path = parent.path
+                self.tree.append(parent)
 
-            for obj in ids:
+            for obj in self.ids:
 
-                size = int(file_data["filesize"])
+                size = int(self.metadata["filesize"])
                 args = {
-                    "owner": author,
-                    "drive": drive,
+                    "owner": self.author,
+                    "drive": self.drive,
                     "name": obj,
                 }
                 args["path"] = (
-                    f"{tree[-1].path}/{obj}" if tree else f"{parent_path}/{obj}"
+                    f"{self.tree[-1].path}/{obj}"
+                    if self.tree
+                    else f"{self.parent_path}/{obj}"
                 )
 
-                if obj != leaf:
+                if obj != self.leaf:
                     args["is_directory"] = True
 
-                if Object.objects.using(db_conn_alias).filter(**args).exists():
+                if Object.objects.using(self.db_conn_alias).filter(**args).exists():
                     file_object = (
-                        Object.objects.using(db_conn_alias)
+                        Object.objects.using(self.db_conn_alias)
                         .prefetch_related("content")
                         .get(**args)
                     )
@@ -82,24 +82,50 @@ def parse_tree(file_data: UploadedFile, db_conn_alias: str = "") -> List[Object]
                     file_object.save()
                 else:
                     args["size"] = size
-                    file_object = Object.objects.using(db_conn_alias).create(**args)
+                    file_object = Object.objects.using(self.db_conn_alias).create(
+                        **args
+                    )
 
-                if tree and file_object not in tree[-1].content.all():
-                    tree[-1].content.add(file_object)
+                if self.ids.index(obj) == 0:
+                    self.file_shared = file_object
 
-                tree.append(file_object)
+                if self.tree and file_object not in self.tree[-1].content.all():
+                    self.tree[-1].content.add(file_object)
+
+                self.tree.append(file_object)
                 print(f"success: ops for {obj}", flush=True)
-    except (
-        IntegrityError,
-        Object.DoesNotExist,
-        User.DoesNotExist,
-        Drive.DoesNotExist,
-        Exception,
-    ) as e:
-        logger.error(f'Error parsing file : {file_data["filepath"]}, {str(e)}')
-        return []
 
-    if db_conn_alias not in ["default", "test_conduit"]:
-        delete_connection(db_conn_alias)
+            transaction.on_commit(self.post_share_ops, using=self.db_conn_alias)
 
-    return tree
+        except (
+            IntegrityError,
+            Object.DoesNotExist,
+            User.DoesNotExist,
+            Drive.DoesNotExist,
+            Exception,
+        ) as e:
+            logger.error(f'Error parsing file : {self.metadata["file_path"]}, {str(e)}')
+            return []
+
+        if self.db_conn_alias not in ["default", "test_conduit"]:
+            delete_connection(self.db_conn_alias)
+
+    def post_share_ops(self):
+
+        args = {
+            "pk": self.metadata["share_uid"],
+            "drive": self.drive,
+            "author": self.author,
+            "note": self.metadata["note"],
+        }
+
+        if Share.objects.filter(**args).exists():
+
+            share_obj = Share.objects.filter(**args).first()
+            share_obj.assets.add(self.file_shared.uid)
+
+        else:
+            share_obj = Share.objects.create(**args)  # fix this with single '_'
+            share_obj.assets.add(self.file_shared.uid)
+
+        # notification ops here

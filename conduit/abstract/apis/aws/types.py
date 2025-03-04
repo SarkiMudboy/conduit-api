@@ -11,8 +11,13 @@ class FileObject(TypedDict):
 
 class FileMetaData(TypedDict):
 
-    owner_email: str
+    author: str
     drive_id: str
     file_path: str  # path without the drive
     filesize: str
     resource_id: Optional[str]
+    bulk: bool
+    # sharing...
+    share_uid: str
+    note: str
+    mentioned_members: str

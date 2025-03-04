@@ -1,11 +1,18 @@
+import uuid
 from typing import Dict, List, Optional
 
 from abstract.apis.aws.handlers import S3AWSHandler
 from abstract.apis.aws.types import FileMetaData
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractBaseUser
+
+# from conduit.share.models import Share
 from rest_framework import serializers
 from storage.models import Object
 
 from .tasks import handle_object_event
+
+User: AbstractBaseUser = get_user_model()
 
 
 class FileDataSerializer(serializers.Serializer):
@@ -32,6 +39,10 @@ class UploadPresignedURLSerializer(serializers.Serializer):
         required=False,
     )
     bulk = serializers.BooleanField()
+    note = serializers.CharField(max_length=3000, required=False)
+    mentioned_members = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False, many=True
+    )
     _meta_data = FileMetaData()
 
     def get_fields(self):
@@ -46,9 +57,18 @@ class UploadPresignedURLSerializer(serializers.Serializer):
         return fields
 
     def set_metadata(self) -> None:
+
+        note = self.validated_data.get("note")
+        mentioned_members = self.validated_data.get("mentioned_members")
+        recipients = mentioned_members.join(",") if mentioned_members else ""
+
         self._metadata = FileMetaData(
-            owner_email=self.context.get("owner").email,
+            author=str(self.context.get("owner").pk),
             drive_id=str(self.context.get("drive").pk),
+            bulk=str(self.validated_data.get("bulk")),
+            share_uid=str(uuid.uuid4()),
+            note=note if note else "",
+            mentioned_members=recipients,
         )
 
     def get_file_upload_metadata(self) -> Dict[str, str]:

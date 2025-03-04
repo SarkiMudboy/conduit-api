@@ -7,6 +7,7 @@ from abstract.apis.aws.types import FileMetaData
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import IntegrityError, transaction
+from django.db.models import Sum
 from share.models import Share
 from storage.models import Drive, Object
 
@@ -127,5 +128,13 @@ class FilePath:
         else:
             share_obj = Share.objects.create(**args)  # fix this with single '_'
             share_obj.assets.add(self.file_shared.uid)
+
+        # calculate total drive usage
+
+        usage = Object.objects.filter(
+            in_directory__isnull=True, drive=self.drive
+        ).aggregate(used_size=Sum("size"))
+        self.drive.used = usage["used_size"]
+        self.drive.save()
 
         # notification ops here

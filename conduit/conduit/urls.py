@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import include, path
 
@@ -24,6 +25,7 @@ urlpatterns = [
     path("api/v1/users/", include("users.urls")),
     path("api/v1/drives/", include("storage.urls")),
     path("api/v1/share/", include("share.urls")),
+    path("api/v1/notifications/", include("notifications.urls")),
 ]
 
 urlpatterns = add_jwt_urls(urlpatterns)

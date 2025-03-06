@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
+from notifications.models import DriveNotification
 from share.models import Share
 from storage.models import Drive, Object
 
@@ -139,3 +140,7 @@ class FilePath:
         self.drive.save()
 
         # notification ops here
+
+        DriveNotification.objects.create(
+            publisher=self.author, drive=self.drive, share=share_obj
+        )

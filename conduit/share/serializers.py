@@ -5,8 +5,6 @@ from abstract.apis.aws.handlers import S3AWSHandler
 from abstract.apis.aws.types import FileMetaData
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
-
-# from conduit.share.models import Share
 from rest_framework import serializers
 from storage.models import Object
 
@@ -55,6 +53,13 @@ class UploadPresignedURLSerializer(serializers.Serializer):
             }
             fields["resource"].queryset = Object.objects.filter(**filters)
         return fields
+
+    def validate_mentioned_members(self, members: List[str]):
+
+        drive = self.context.get("drive")
+        for member in members:
+            if uuid.UUID(member) not in drive.members.values_list("pk", flat=True):
+                serializers.ValidationError("Invalid member")
 
     def set_metadata(self) -> None:
 

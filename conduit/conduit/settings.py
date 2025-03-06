@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "storage",
     "share",
     "file_tree",
+    "notifications",
     # third-party
     "corsheaders",
     "rest_framework",

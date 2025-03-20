@@ -16,7 +16,6 @@ class FileMetaData(TypedDict):
     file_path: str  # path without the drive
     filesize: str
     resource_id: Optional[str]
-    bulk: bool
     # sharing...
     share_uid: str
     note: str

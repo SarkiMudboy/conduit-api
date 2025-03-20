@@ -121,6 +121,9 @@ class FilePath:
             "note": self.metadata["note"],
         }
 
+        if self.parent_path:
+            args["parent"] = self.tree[0]
+
         if Share.objects.filter(**args).exists():
 
             share_obj = Share.objects.filter(**args).first()
@@ -141,6 +144,6 @@ class FilePath:
 
         # notification ops here
 
-        DriveNotification.objects.create(
+        DriveNotification.objects.get_or_create(
             publisher=self.author, drive=self.drive, share=share_obj
         )

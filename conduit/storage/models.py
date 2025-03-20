@@ -5,6 +5,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from storage.choices import DriveType
 
+from conduit.abstract.apis.aws.handlers import S3AWSHandler
+
 
 def upload_file_to_user_drive(file: "Object", filename: str) -> str:
     """Dir for upload"""
@@ -98,3 +100,8 @@ class Object(TimestampUUIDMixin):
     def get_file_path(self) -> str:
         """Dir for upload"""
         return self.path + "/"
+
+    def get_object_download_url(self) -> str:
+
+        handler = S3AWSHandler()
+        return handler.get_download_presigned_url(self.path)

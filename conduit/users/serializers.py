@@ -31,7 +31,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["uid", "email", "password", "tag", "avatar", "drive"]
         read_only_fields = ["uid"]
-        extra_kwargs = {"tag": {"required": False}, "password": {"write_only": True}}
+        extra_kwargs = {
+            "tag": {"required": False},
+            "password": {"write_only": True},
+        }
 
     def validate_tag(self, tag: str) -> str:
         if not tag or User.objects.filter(tag=tag).exists():
@@ -99,6 +102,7 @@ class LoginSerializer(serializers.ModelSerializer):
         """returns user data here"""
 
         user = data.get("user")
+        print("---->", user.email, flush=True)
         return BasicUserSeriailzer(user).data
 
 

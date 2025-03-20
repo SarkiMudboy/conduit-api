@@ -15,5 +15,8 @@ class Share(TimestampUUIDMixin):
     )
     drive = models.ForeignKey(Drive, related_name="shares", on_delete=models.DO_NOTHING)
     assets = models.ManyToManyField(Object)
+    parent = models.ForeignKey(
+        Object, related_name="root_share", null=True, on_delete=models.CASCADE
+    )
     note = models.CharField(_("Upload Message"), max_length=3000, null=True, blank=True)
     mentioned_members = models.ManyToManyField(User)

@@ -1,7 +1,7 @@
-from django.urls import path
+from rest_framework.routers import DefaultRouter
 
 from .views import DriveNotificationView
 
-get_notifications = DriveNotificationView.as_view({"get": "list"})
-
-urlpatterns = [path("", get_notifications, name="drive-notification")]
+router = DefaultRouter()
+router.register(r"", DriveNotificationView, basename="drive_notifications")
+urlpatterns = [*router.urls]

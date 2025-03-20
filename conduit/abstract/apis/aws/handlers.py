@@ -40,6 +40,23 @@ class S3AWSHandler:
 
         return ""
 
+    def _get_download_presigned_url(self, path: str) -> str:
+
+        try:
+            return self.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": bucket, "Key": path},
+                ExpiresIn=1000,
+            )
+        except ClientError:
+            logger.info("Couldn't get a presigned URL for object '%s'.", path)
+
+        return ""
+
+    def get_download_presigned_url(self, path: str) -> str:
+
+        return self._get_download_presigned_url(path)
+
     def get_upload_presigned_url(
         self,
         file_obj: FileObject,

@@ -70,7 +70,6 @@ class UploadPresignedURLSerializer(serializers.Serializer):
         self._metadata = FileMetaData(
             author=str(self.context.get("owner").pk),
             drive_id=str(self.context.get("drive").pk),
-            bulk=str(self.validated_data.get("bulk")),
             share_uid=str(uuid.uuid4()),
             note=note if note else "",
             mentioned_members=recipients,
@@ -104,6 +103,18 @@ class UploadPresignedURLSerializer(serializers.Serializer):
 
         handler = S3AWSHandler()
         return handler.fetch_urls(objs, root, self._metadata)
+
+
+class DownloadPresignedURLSerializer(serializers.ModelSerializer):
+
+    url = serializers.CharField(max_length=2000)
+
+    class Meta:
+        model = Object
+        fields = ["uid", "url"]
+
+    def get_url(self) -> str:
+        return self.instance.get_object_download_url()
 
 
 class ObjectEventSerializer(serializers.Serializer):

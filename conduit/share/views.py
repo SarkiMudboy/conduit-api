@@ -9,10 +9,11 @@ from rest_framework.exceptions import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
-from storage.models import Drive
+from storage.models import Drive, Object
 from storage.permissions import IsDriveOwnerOrMember
 
 from .serializers import (
+    DownloadPresignedURLSerializer,
     ObjectEventSerializer,
     PresignedURLSerializer,
     UploadPresignedURLSerializer,
@@ -34,6 +35,14 @@ class ShareViewSet(ViewSet):
         self.check_object_permissions(self.request, drive)
         return drive
 
+    def get_file_object(self) -> Object:
+
+        obj_pk = self.kwargs.get("pk")
+        file_object = Object.objects.get(pk=obj_pk).select_related("drive")
+        self.check_object_permissions(self.request, file_object.drive)
+
+        return file_object
+
     @action(methods=["POST"], detail=False, url_path="get-upload-url")
     def get_upload_url(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         serializer = self.serializer_class(
@@ -51,6 +60,12 @@ class ShareViewSet(ViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(methods=["GET"], detail=True, url_path="get-download-url")
+    def get_download_url(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        asset = self.get_file_object()
+        serializer = DownloadPresignedURLSerializer(asset)
+        return Response(serializer.data, status.HTTP_200_OK)
 
 
 class StorageObjectEventWebhookView(generics.GenericAPIView):

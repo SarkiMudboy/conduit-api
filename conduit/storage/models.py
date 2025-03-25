@@ -1,11 +1,10 @@
+from abstract.apis.aws.handlers import S3AWSHandler
 from abstract.models import TimestampUUIDMixin
 from django.db import models
 
 # from users.views import User
 from django.utils.translation import gettext_lazy as _
 from storage.choices import DriveType
-
-from conduit.abstract.apis.aws.handlers import S3AWSHandler
 
 
 def upload_file_to_user_drive(file: "Object", filename: str) -> str:

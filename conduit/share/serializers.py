@@ -107,14 +107,14 @@ class UploadPresignedURLSerializer(serializers.Serializer):
 
 class DownloadPresignedURLSerializer(serializers.ModelSerializer):
 
-    url = serializers.CharField(max_length=2000)
+    url = serializers.SerializerMethodField()
 
     class Meta:
         model = Object
         fields = ["uid", "url"]
 
-    def get_url(self) -> str:
-        return self.instance.get_object_download_url()
+    def get_url(self, instance: Object) -> str:
+        return instance.get_object_download_url()
 
 
 class ObjectEventSerializer(serializers.Serializer):

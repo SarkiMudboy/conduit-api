@@ -43,7 +43,7 @@ class S3AWSHandler:
     def _get_download_presigned_url(self, path: str) -> str:
 
         try:
-            return self.generate_presigned_url(
+            return self.client.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={"Bucket": bucket, "Key": path},
                 ExpiresIn=1000,

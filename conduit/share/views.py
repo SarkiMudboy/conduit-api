@@ -38,7 +38,7 @@ class ShareViewSet(ViewSet):
     def get_file_object(self) -> Object:
 
         obj_pk = self.kwargs.get("pk")
-        file_object = Object.objects.get(pk=obj_pk).select_related("drive")
+        file_object = Object.objects.select_related("drive").get(pk=obj_pk)
         self.check_object_permissions(self.request, file_object.drive)
 
         return file_object

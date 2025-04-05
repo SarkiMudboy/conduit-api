@@ -103,4 +103,4 @@ class Object(TimestampUUIDMixin):
     def get_object_download_url(self) -> str:
 
         handler = S3AWSHandler()
-        return handler.get_download_presigned_url(self.path)
+        return handler.get_download_presigned_url(self.drive.name + self.path)

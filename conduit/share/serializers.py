@@ -2,7 +2,7 @@ import uuid
 from typing import Dict, List, Optional
 
 from abstract.apis.aws.handlers import S3AWSHandler
-from abstract.apis.aws.types import FileMetaData
+from abstract.apis.aws.types import BaseFileObject, FileMetaData
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
 from rest_framework import serializers
@@ -27,6 +27,7 @@ class PresignedURLSerializer(serializers.Serializer):
 
     id = serializers.CharField(max_length=36, required=True)
     url = serializers.URLField(allow_blank=True)
+    path = serializers.CharField(required=False)
 
 
 class UploadPresignedURLSerializer(serializers.Serializer):
@@ -107,14 +108,13 @@ class UploadPresignedURLSerializer(serializers.Serializer):
 
 class DownloadPresignedURLSerializer(serializers.ModelSerializer):
 
-    url = serializers.SerializerMethodField()
+    # url = serializers.SerializerMethodField()
 
     class Meta:
         model = Object
-        fields = ["uid", "url"]
 
-    def get_url(self, instance: Object) -> str:
-        return instance.get_object_download_url()
+    def get_url(self) -> List[BaseFileObject]:
+        return self.instance.get_object_download_url()
 
 
 class ObjectEventSerializer(serializers.Serializer):

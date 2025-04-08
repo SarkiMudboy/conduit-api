@@ -38,7 +38,11 @@ class ShareViewSet(ViewSet):
     def get_file_object(self) -> Object:
 
         obj_pk = self.kwargs.get("pk")
-        file_object = Object.objects.select_related("drive").get(pk=obj_pk)
+        file_object = (
+            Object.objects.select_related("drive")
+            .prefetch_related("content")
+            .get(pk=obj_pk)
+        )
         self.check_object_permissions(self.request, file_object.drive)
 
         return file_object
@@ -65,7 +69,11 @@ class ShareViewSet(ViewSet):
     def get_download_url(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         asset = self.get_file_object()
         serializer = DownloadPresignedURLSerializer(asset)
-        return Response(serializer.data, status.HTTP_200_OK)
+        urls = serializer.get_url()
+        return Response(
+            PresignedURLSerializer(urls, many=True).data,
+            status.HTTP_200_OK,
+        )
 
 
 class StorageObjectEventWebhookView(generics.GenericAPIView):

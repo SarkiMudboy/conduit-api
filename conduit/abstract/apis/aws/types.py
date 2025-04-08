@@ -1,12 +1,16 @@
 from typing import Optional, TypedDict
 
 
-class FileObject(TypedDict):
+class BaseFileObject(TypedDict):
 
     id: str
     path: str
-    size: int
     url: str
+
+
+class FileObject(BaseFileObject):
+    # this adds filesize for unsaved assets (Best for representing files to be uploaded)
+    size: int
 
 
 class FileMetaData(TypedDict):

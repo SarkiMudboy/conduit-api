@@ -1,8 +1,9 @@
+from typing import List
+
 from abstract.apis.aws.handlers import S3AWSHandler
+from abstract.apis.aws.types import BaseFileObject
 from abstract.models import TimestampUUIDMixin
 from django.db import models
-
-# from users.views import User
 from django.utils.translation import gettext_lazy as _
 from storage.choices import DriveType
 
@@ -100,7 +101,50 @@ class Object(TimestampUUIDMixin):
         """Dir for upload"""
         return self.path + "/"
 
-    def get_object_download_url(self) -> str:
+    def get_download_path(self) -> str:
+        """Full path for download"""
+        return self.drive.name + self.path
+
+    def get_object_download_url(self) -> List[BaseFileObject]:
+        """directory assets are recursively fetched from db,
+        while obtaining the presigned urls at the same time.
+        return: List of FileObject types.
+        """
+
+        if not self.is_directory:
+            return [
+                {
+                    "id": self.pk,
+                    "path": self.get_download_path(),
+                    "url": self._get_object_download_url(),
+                }
+            ]
+
+        # recursive func to get all the contents of the folder from db...
+        return fetch_all_folder_asset_from_db(self, [])
+
+    def _get_object_download_url(self) -> str:
 
         handler = S3AWSHandler()
-        return handler.get_download_presigned_url(self.drive.name + self.path)
+        return handler.get_download_presigned_url(self.get_download_path())
+
+
+def fetch_all_folder_asset_from_db(
+    asset: Object, tree: List[BaseFileObject]
+) -> List[BaseFileObject]:
+
+    content = asset.content.all()
+    if not content:
+        tree.append(
+            {
+                "id": asset.pk,
+                "path": asset.get_download_path(),
+                "url": asset._get_object_download_url(),
+            }
+        )
+        return tree
+
+    for obj in content:
+        tree = fetch_all_folder_asset_from_db(obj, tree)
+
+    return tree

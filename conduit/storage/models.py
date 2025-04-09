@@ -103,7 +103,7 @@ class Object(TimestampUUIDMixin):
 
     def get_download_path(self) -> str:
         """Full path for download"""
-        return self.drive.name + self.path
+        return self.path[1:]
 
     def get_object_download_url(self) -> List[BaseFileObject]:
         """directory assets are recursively fetched from db,
@@ -126,7 +126,7 @@ class Object(TimestampUUIDMixin):
     def _get_object_download_url(self) -> str:
 
         handler = S3AWSHandler()
-        return handler.get_download_presigned_url(self.get_download_path())
+        return handler.get_download_presigned_url(self.drive.name + self.path)
 
 
 def fetch_all_folder_asset_from_db(

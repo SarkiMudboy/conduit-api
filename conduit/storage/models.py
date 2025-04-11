@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from abstract.apis.aws.handlers import S3AWSHandler
 from abstract.apis.aws.types import BaseFileObject
@@ -101,9 +101,15 @@ class Object(TimestampUUIDMixin):
         """Dir for upload"""
         return self.path + "/"
 
-    def get_download_path(self) -> str:
+    def get_download_path(self, root: Optional[str] = None) -> str:
         """Full path for download"""
-        return self.path[1:]
+
+        full_path = self.path[1:]
+        if root:
+            splitted_path = full_path.split(root)
+            full_path = root + splitted_path[-1]
+
+        return full_path
 
     def get_object_download_url(self) -> List[BaseFileObject]:
         """directory assets are recursively fetched from db,
@@ -120,8 +126,9 @@ class Object(TimestampUUIDMixin):
                 }
             ]
 
-        # recursive func to get all the contents of the folder from db...
-        return fetch_all_folder_asset_from_db(self, [])
+        return fetch_all_folder_asset_from_db(
+            self, [], self.name if self.in_directory else None
+        )
 
     def _get_object_download_url(self) -> str:
 
@@ -130,21 +137,22 @@ class Object(TimestampUUIDMixin):
 
 
 def fetch_all_folder_asset_from_db(
-    asset: Object, tree: List[BaseFileObject]
+    asset: Object, tree: List[BaseFileObject], root: str
 ) -> List[BaseFileObject]:
 
+    # recursive func to get all the contents of the folder from db...
     content = asset.content.all()
     if not content:
         tree.append(
             {
                 "id": asset.pk,
-                "path": asset.get_download_path(),
+                "path": asset.get_download_path(root),
                 "url": asset._get_object_download_url(),
             }
         )
         return tree
 
     for obj in content:
-        tree = fetch_all_folder_asset_from_db(obj, tree)
+        tree = fetch_all_folder_asset_from_db(obj, tree, root)
 
     return tree

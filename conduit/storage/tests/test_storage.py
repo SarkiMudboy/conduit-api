@@ -164,7 +164,8 @@ class TestDriveAPI:
         headers = {"Authorization": f"Bearer {token.get('access')}"}
         personal_drive = conduit_user.user_drive.get(type=DriveType.PERSONAL)
         response = client.delete(
-            ENDPOINTS["mod-drive"] + f"{str(personal_drive.uid)}/", headers=headers
+            ENDPOINTS["mod-drive"] + f"{str(personal_drive.uid)}/",
+            headers=headers,
         )
 
         assert response.status_code == 400

@@ -13,5 +13,8 @@ test-storage:
 test-tree:
 	docker compose run app sh -c "pytest --capture=no share/tests/test_parser.py"
 
+test-storage-utils:
+	docker compose run app sh -c "pytest --capture=no storage/tests/test_utils.py"
+
 build:
 	docker compose build

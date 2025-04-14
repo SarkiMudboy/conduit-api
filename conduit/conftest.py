@@ -4,6 +4,7 @@ import pytest
 from django.contrib.auth.models import AbstractBaseUser
 from pytest_factoryboy import register
 from rest_framework.test import APIClient
+from storage.models import Object
 from storage.tests.factory import DriveFactory, ObjectFactory
 from users.tests.factory import OTPFactory, UserFactory
 
@@ -71,3 +72,28 @@ def tree_child_nodes() -> Dict[str, list]:
         "fridge": ["fruits.json"],
         "cooker": ["pot.png"],
     }
+
+
+@pytest.fixture(scope="function")
+def create_tree(tree_child_nodes: Dict[str, List[str]]) -> Optional[Object]:
+
+    root = None
+
+    conduit_user = UserFactory.create()
+    drive = DriveFactory.create(name="test-drive", owner=conduit_user)
+
+    for parent, children in tree_child_nodes.items():
+        obj, _ = Object.objects.get_or_create(name=parent, drive=drive)
+
+        if parent == "home":
+            obj.path = "/home"
+            obj.save()
+            root = obj
+
+        for child in children:
+            node, _ = Object.objects.get_or_create(
+                name=child, drive=drive, path=f"/{obj.path[1:]}/{child}"
+            )
+            obj.content.add(node)
+
+    return root

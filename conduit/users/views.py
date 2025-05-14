@@ -297,9 +297,7 @@ class AppTokenVerifyView(TokenVerifyView):
     def post(self, request, *args, **kwargs):
 
         token = request.COOKIES.get("access_token")
-        print("token:", token, flush=True)
         if not token:
-            print("sum's not right", flush=True)
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         try:

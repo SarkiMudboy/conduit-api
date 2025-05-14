@@ -37,7 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def validate_tag(self, tag: str) -> str:
-        if not tag or User.objects.filter(tag=tag).exists():
+        if tag and User.objects.filter(tag=tag).exists():
             raise ValidationError("User with tag already exists")
 
         return tag
@@ -102,7 +102,6 @@ class LoginSerializer(serializers.ModelSerializer):
         """returns user data here"""
 
         user = data.get("user")
-        print("---->", user.email, flush=True)
         return BasicUserSeriailzer(user).data
 
 

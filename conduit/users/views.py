@@ -62,6 +62,7 @@ class SignUpView(generics.GenericAPIView):
         return {"refresh": str(token), "access": str(token.access_token)}
 
     def post(self, request: HttpRequest, **kwargs) -> HttpResponse:
+        print(request.data, flush=True)
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -172,8 +173,7 @@ class SignOutView(generics.GenericAPIView):
             refresh = request.data.get("refresh")
             token = RefreshToken(refresh)
             token.blacklist()
-        except Exception as e:
-            print(str(e))
+        except Exception:
             code = status.HTTP_400_BAD_REQUEST
 
         return Response(status=code)
@@ -297,7 +297,9 @@ class AppTokenVerifyView(TokenVerifyView):
     def post(self, request, *args, **kwargs):
 
         token = request.COOKIES.get("access_token")
+        print("token:", token, flush=True)
         if not token:
+            print("sum's not right", flush=True)
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         try:

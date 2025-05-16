@@ -62,7 +62,6 @@ class SignUpView(generics.GenericAPIView):
         return {"refresh": str(token), "access": str(token.access_token)}
 
     def post(self, request: HttpRequest, **kwargs) -> HttpResponse:
-        print(request.data, flush=True)
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()

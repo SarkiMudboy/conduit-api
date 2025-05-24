@@ -1,4 +1,4 @@
-from typing import Any, Dict, Literal, TypedDict
+from typing import Any, Dict, Literal, Optional, TypedDict
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect
@@ -20,9 +20,9 @@ def set_token_cookie(type: Literal["access", "refresh"], value: Any) -> Dict[str
 
     lifetime = "ACCESS_TOKEN_LIFETIME" if type == "access" else "REFRESH_TOKEN_LIFETIME"
     return {
-        "key": settings.SIMPLE_JWT["AUTH_COOKIE"]
-        if type == "access"
-        else "refresh_token",
+        "key": (
+            settings.SIMPLE_JWT["AUTH_COOKIE"] if type == "access" else "refresh_token"
+        ),
         "value": value,
         "expires": settings.SIMPLE_JWT[lifetime],
         "secure": settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
@@ -32,9 +32,12 @@ def set_token_cookie(type: Literal["access", "refresh"], value: Any) -> Dict[str
 
 
 def parse_response(
-    params: ResponseParams, response: HttpResponse = Response()
+    params: ResponseParams, response: Optional[HttpResponse] = None
 ) -> HttpResponse:
     """Custom response with auth tokens cookies injected into View Response"""
+
+    if not response:
+        response = Response(status=params.get("status"))
 
     access_cookie = set_token_cookie("access", params["token"]["access"])
     refresh_cookie = set_token_cookie("refresh", params["token"]["refresh"])
@@ -42,8 +45,6 @@ def parse_response(
     response.set_cookie(**access_cookie)
     response.set_cookie(**refresh_cookie)
     response.data = params.get("data")
-    response.status = params.get("status")
-
     return response
 
 

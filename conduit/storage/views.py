@@ -5,6 +5,7 @@ from django.db import models
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.http.request import HttpRequest
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.mixins import (
     CreateModelMixin,
@@ -31,10 +32,8 @@ from .serializers import (
     DriveObjectSerializer,
     DriveSerializer,
     ObjectDetailSerializer,
+    ObjectPathSerializer,
 )
-
-# from rest_framework.decorators import action
-
 
 User: AbstractBaseUser = get_user_model()
 
@@ -116,6 +115,24 @@ class ObjectViewSet(
             return self.get_queryset().get(uid=self.kwargs.get(self.lookup_field))
         except Object.DoesNotExist:
             raise Http404("Storage object Not Found")
+
+    @action(methods=["GET"], detail=True, url_path="get_path_detail")
+    def get_path_detail(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        folder = None
+        object_nodes = []
+
+        try:
+            folder = self.get_queryset().get(pk=kwargs.get("uid"))
+        except Object.DoesNotExist:
+            pass
+
+        if folder:
+            object_nodes = folder.parse_path()
+            serializer = ObjectPathSerializer(object_nodes, many=True)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class DriveMemberView(

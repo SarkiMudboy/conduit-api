@@ -14,3 +14,4 @@ drive_router.register(r"members", DriveMemberView, basename="members")
 drive_router.register(r"share", ShareViewSet, basename="share")
 
 urlpatterns = [*router.urls, *drive_router.urls]
+print(urlpatterns)

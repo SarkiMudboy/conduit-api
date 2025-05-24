@@ -153,7 +153,7 @@ class SigninView(generics.GenericAPIView):
 
         return parse_response(
             {
-                "status": status.HTTP_201_CREATED,
+                "status": status.HTTP_200_OK,
                 "data": data,
                 "token": serializer.data.pop("token"),
             }

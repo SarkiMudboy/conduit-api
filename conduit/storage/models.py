@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from abstract.apis.aws.handlers import S3AWSHandler
 from abstract.apis.aws.types import BaseFileObject
@@ -134,6 +134,35 @@ class Object(TimestampUUIDMixin):
 
         handler = S3AWSHandler()
         return handler.get_download_presigned_url(self.drive.name + self.path)
+
+    def parse_path(self) -> List[Dict[str, str]]:
+        """Traverse the path tree and get each node name and pk"""
+        path: str = self.path
+        nodes = path.split("/")[1:]
+        object_nodes = []
+        root = None
+
+        # get the root asset
+        try:
+            root = Object.objects.get(
+                in_directory__isnull=True,
+                name=nodes[0],
+                drive__uid=str(self.drive.pk),
+            )
+        except Object.DoesNotExist:
+            raise
+
+        parent = root
+        object_nodes.append(root)
+        for idx in range(1, len(nodes)):
+
+            for obj in parent.content.all():
+                if nodes[idx] == obj.name:
+                    object_nodes.append(obj)
+                    parent = obj
+            idx += 1
+
+        return object_nodes
 
 
 def fetch_all_folder_asset_from_db(

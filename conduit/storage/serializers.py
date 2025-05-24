@@ -138,3 +138,9 @@ class ObjectDetailSerializer(serializers.ModelSerializer):
         if depth > 1:
             return DriveObjectSerializer(objects, many=True, context={"depth": -1}).data
         return None
+
+
+class ObjectPathSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Object
+        fields = ["uid", "name"]

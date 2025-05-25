@@ -31,7 +31,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Share
-        fields = ["uid", "drive", "author", "source", "note", "created_at"]
+        fields = ["uid", "drive", "assets", "author", "source", "note", "created_at"]
 
     def get_source(self, instance) -> Optional[str]:
         if instance.parent:

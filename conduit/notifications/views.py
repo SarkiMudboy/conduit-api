@@ -26,7 +26,7 @@ class DriveNotificationView(ListModelMixin, GenericViewSet):
         notifications = self.queryset.filter(
             models.Q(drive__members=self.request.user)
             | models.Q(drive__owner=self.request.user)
-        )
+        ).distinct()
 
         notif_ids = user.read_notification.values_list("pk", flat=True)
         unread_notifications = notifications.exclude(uid__in=notif_ids)

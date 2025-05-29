@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any, Dict, Literal, Optional, TypedDict
 
 from django.conf import settings
@@ -16,21 +17,28 @@ class ResponseParams(TypedDict, total=False):
     token: Token
 
 
-def set_token_cookie(type: Literal["access", "refresh"], value: Any) -> Dict[str, Any]:
+def set_token_cookie(
+    type: Literal["access", "refresh"], value: Any, destroy: bool = False
+) -> Dict[str, Any]:
 
     lifetime = "ACCESS_TOKEN_LIFETIME" if type == "access" else "REFRESH_TOKEN_LIFETIME"
+    expiry = settings.SIMPLE_JWT[lifetime]
+    if destroy:
+        expiry = timedelta(hours=-5)
+
     return {
         "key": (
             settings.SIMPLE_JWT["AUTH_COOKIE"] if type == "access" else "refresh_token"
         ),
         "value": value,
-        "expires": settings.SIMPLE_JWT[lifetime],
+        "expires": expiry,
         "secure": settings.SIMPLE_JWT["AUTH_COOKIE_SECURE"],
         "httponly": settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
         "samesite": settings.SIMPLE_JWT["AUTH_COOKIE_SAMESITE"],
     }
 
 
+# TODO: add destroy param and based on the flag we will set access/refresh cookie here
 def parse_response(
     params: ResponseParams, response: Optional[HttpResponse] = None
 ) -> HttpResponse:

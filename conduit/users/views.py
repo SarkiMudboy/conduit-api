@@ -2,7 +2,12 @@ import secrets
 from typing import Dict
 
 from abstract.exceptions import BadRequestException
-from abstract.response import parse_redirect_response, parse_response, set_token_cookie
+from abstract.response import (
+    parse_redirect_response,
+    parse_response,
+    revoke_session,
+    set_token_cookie,
+)
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser
@@ -154,7 +159,7 @@ class SigninView(generics.GenericAPIView):
         return parse_response(
             {
                 "status": status.HTTP_200_OK,
-                "data": data,
+                "data": data.get("current_user"),
                 "token": serializer.data.pop("token"),
             }
         )
@@ -175,7 +180,7 @@ class SignOutView(generics.GenericAPIView):
         except Exception:
             code = status.HTTP_400_BAD_REQUEST
 
-        return Response(status=code)
+        return revoke_session(code)
 
 
 # github oauth

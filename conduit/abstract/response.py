@@ -3,6 +3,7 @@ from typing import Any, Dict, Literal, Optional, TypedDict
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect
+from django.utils import timezone
 from rest_framework.response import Response
 
 
@@ -22,9 +23,9 @@ def set_token_cookie(
 ) -> Dict[str, Any]:
 
     lifetime = "ACCESS_TOKEN_LIFETIME" if type == "access" else "REFRESH_TOKEN_LIFETIME"
-    expiry = settings.SIMPLE_JWT[lifetime]
+    expiry = timezone.now() + settings.SIMPLE_JWT[lifetime]
     if destroy:
-        expiry = timedelta(hours=-5)
+        expiry = timezone.now() + timedelta(hours=-5)
 
     return {
         "key": (
@@ -38,7 +39,6 @@ def set_token_cookie(
     }
 
 
-# TODO: add destroy param and based on the flag we will set access/refresh cookie here
 def parse_response(
     params: ResponseParams, response: Optional[HttpResponse] = None
 ) -> HttpResponse:
@@ -62,6 +62,19 @@ def parse_redirect_response(tokens: Token, location: str) -> HttpResponseRedirec
     refresh_cookie = set_token_cookie("refresh", tokens.get("refresh"))
 
     response = HttpResponseRedirect(location)
+    response.set_cookie(**access_cookie)
+    response.set_cookie(**refresh_cookie)
+
+    return response
+
+
+def revoke_session(code: int) -> Response:
+    # invalidates access and refresh token cookies
+    response = Response(status=code)
+
+    access_cookie = set_token_cookie("access", None, destroy=True)
+    refresh_cookie = set_token_cookie("refresh", None, destroy=True)
+
     response.set_cookie(**access_cookie)
     response.set_cookie(**refresh_cookie)
 

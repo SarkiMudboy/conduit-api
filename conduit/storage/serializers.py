@@ -5,6 +5,7 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from rest_framework import serializers
 
 from .models import Drive, Object
+from .utils import handle_directory_depth
 
 User: AbstractBaseUser = get_user_model()
 
@@ -86,10 +87,19 @@ class DriveDetailSerializer(serializers.ModelSerializer):
 
     members = serializers.SerializerMethodField()  # first three
     storage_objects = serializers.SerializerMethodField()
+    directories = serializers.SerializerMethodField()
 
     class Meta:
         model = Drive
-        fields = ["uid", "name", "size", "used", "members", "storage_objects"]
+        fields = [
+            "uid",
+            "name",
+            "size",
+            "used",
+            "members",
+            "storage_objects",
+            "directories",
+        ]
 
     def get_members(self, drive: Drive) -> List[str]:
         return drive.members.values_list("tag", flat=True)[:3]
@@ -97,6 +107,14 @@ class DriveDetailSerializer(serializers.ModelSerializer):
     def get_storage_objects(self, drive: Drive) -> Dict[str, Any]:
         objects = drive.storage_object.filter(in_directory__isnull=True)
         return DriveObjectSerializer(objects, many=True).data
+
+    def get_directories(self, drive: Drive):
+        objects = drive.storage_object.filter(in_directory__isnull=True)
+        dirs = handle_directory_depth(objects)
+        if dirs:
+            return ObjectDetailSerializer(dirs, many=True).data
+
+        return None
 
 
 class AddDriveMemberSerializer(serializers.ModelSerializer):
@@ -125,18 +143,36 @@ class DriveMemberSerializer(serializers.ModelSerializer):
 
 
 class ObjectDetailSerializer(serializers.ModelSerializer):
+
     content = serializers.SerializerMethodField()
+    directories = serializers.SerializerMethodField()
 
     class Meta:
         model = Object
-        fields = ["uid", "name", "size", "content", "metadata", "path"]
+        fields = [
+            "uid",
+            "name",
+            "size",
+            "content",
+            "metadata",
+            "path",
+            "directories",
+        ]
 
-    def get_content(self, object: Object) -> Dict[str, Any]:
-        """Nested content for directories: 1 layer deep"""
-        depth = self.context.get("depth", 2)
+    def get_content(self, object: Object) -> List[Dict[str, Any]]:
+
         objects = object.content.all()
-        if depth > 1:
-            return DriveObjectSerializer(objects, many=True, context={"depth": -1}).data
+        return DriveObjectSerializer(objects, many=True).data
+
+    def get_directories(self, object: Object) -> List[Dict[str, Any]]:
+        # TODO: There needs to be a limit on the number of objects that this routine is run for...Ideally we do not want this to be done
+        # for really large folders, so monitor latency and find that threshold that this starts to become annoying...
+        objects = object.content.all()
+        dirs = handle_directory_depth(objects)
+
+        if dirs:
+            return ObjectDetailSerializer(dirs, many=True).data
+
         return None
 
 

@@ -61,9 +61,13 @@ class DriveViewSet(
         return super().get_serializer_class()
 
     def get_queryset(self) -> QuerySet:
-        return self.queryset.filter(
-            models.Q(owner=self.request.user) | models.Q(members=self.request.user)
-        ).distinct()
+        return (
+            self.queryset.filter(
+                models.Q(owner=self.request.user) | models.Q(members=self.request.user)
+            )
+            .prefetch_related("storage_object")
+            .distinct()
+        )
 
     def create(self, request: HttpRequest, **kwargs) -> HttpResponse:
         serializer = BaseDriveSerializer(
@@ -112,7 +116,11 @@ class ObjectViewSet(
 
     def get_object(self) -> Object:
         try:
-            return self.get_queryset().get(uid=self.kwargs.get(self.lookup_field))
+            return (
+                self.get_queryset()
+                .prefetch_related("content")
+                .get(uid=self.kwargs.get(self.lookup_field))
+            )
         except Object.DoesNotExist:
             raise Http404("Storage object Not Found")
 

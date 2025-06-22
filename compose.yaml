@@ -4,12 +4,15 @@ x-secrets: &secrets
   - DB_USER=${DB_USER}
   - DB_PASSWORD=${DB_PASSWORD}
   - DB_PORT=${DB_PORT}
+  - DEBUG=${DEBUG}
 
   - SECRET_KEY=${SECRET_KEY}
   - SMTP_PORT=${SMTP_PORT}
   - SMTP_SERVER=${SMTP_SERVER}
   - EMAIL_ADDRESS=${EMAIL_ADDRESS}
   - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
+
+  - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
 
   - CELERY_BROKER_URL=${CELERY_BROKER_URL}
   - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
@@ -27,7 +30,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: "./Dockerfile"
+      dockerfile: "./docker/local.Dockerfile"
 
     ports:
       - "8000:8000"
@@ -47,6 +50,8 @@ services:
     depends_on:
       - db
 
+    env_file: .env.local
+
   db:
     image: postgres:alpine3.19
 
@@ -62,9 +67,13 @@ services:
     ports:
       - 5430:5432
 
+    env_file: .env.local
+
   redis:
     image: redis:alpine3.17
     container_name: CD-RD
+
+    env_file: .env.local
 
   celery:
     build:
@@ -82,6 +91,8 @@ services:
     depends_on:
       - db
       - redis
+
+    env_file: .env.local
 
 volumes:
   conduit-db-data:

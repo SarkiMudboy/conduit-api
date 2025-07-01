@@ -24,3 +24,4 @@ COPY ./conduit /conduit
 WORKDIR /conduit
 ENV PATH="/py/bin:$PATH"
 EXPOSE 8000
+CMD ["echo", "How are you"]

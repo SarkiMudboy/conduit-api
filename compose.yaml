@@ -1,30 +1,30 @@
-x-secrets: &secrets
-  - DB_HOST=${DB_HOST}
-  - DB_NAME=${DB_NAME}
-  - DB_USER=${DB_USER}
-  - DB_PASSWORD=${DB_PASSWORD}
-  - DB_PORT=${DB_PORT}
-  - DEBUG=${DEBUG}
-
-  - SECRET_KEY=${SECRET_KEY}
-  - SMTP_PORT=${SMTP_PORT}
-  - SMTP_SERVER=${SMTP_SERVER}
-  - EMAIL_ADDRESS=${EMAIL_ADDRESS}
-  - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
-
-  - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
-
-  - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-  - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
-
-  - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
-
-  - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-  - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-  - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
-
-  - GITHUB_OAUTH_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID}
-  - GITHUB_OAUTH_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET}
+# x-secrets: &secrets
+#   - DB_HOST=${DB_HOST}
+#   - DB_NAME=${DB_NAME}
+#   - DB_USER=${DB_USER}
+#   - DB_PASSWORD=${DB_PASSWORD}
+#   - DB_PORT=${DB_PORT}
+#   - DEBUG=${DEBUG}
+#
+#   - SECRET_KEY=${SECRET_KEY}
+#   - SMTP_PORT=${SMTP_PORT}
+#   - SMTP_SERVER=${SMTP_SERVER}
+#   - EMAIL_ADDRESS=${EMAIL_ADDRESS}
+#   - EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
+#
+#   - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS}
+#
+#   - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+#   - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+#
+#   - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
+#
+#   - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+#   - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+#   - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
+#
+#   - GITHUB_OAUTH_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID}
+#   - GITHUB_OAUTH_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET}
 
 services:
   app:
@@ -46,11 +46,12 @@ services:
               python -u manage.py runserver 0.0.0.0:8000
             "
 
-    environment: *secrets
+    # environment: *secrets
     depends_on:
       - db
 
-    env_file: .env.local
+    env_file:
+      - .env.local
 
   db:
     image: postgres:alpine3.19
@@ -67,13 +68,15 @@ services:
     ports:
       - 5430:5432
 
-    env_file: .env.local
+    env_file:
+      - .env.local
 
   redis:
     image: redis:alpine3.17
     container_name: CD-RD
 
-    env_file: .env.local
+    env_file:
+      - .env.local
 
   celery:
     build:
@@ -86,13 +89,14 @@ services:
 
     command: "python -m celery -A conduit worker -l info --pool=solo"
     container_name: CD-CL
-    environment: *secrets
+    # environment: *secrets
 
     depends_on:
       - db
       - redis
 
-    env_file: .env.local
+    env_file:
+      - .env.local
 
 volumes:
   conduit-db-data:

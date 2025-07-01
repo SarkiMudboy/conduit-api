@@ -110,9 +110,10 @@ class DriveDetailSerializer(serializers.ModelSerializer):
 
     def get_directories(self, drive: Drive):
         objects = drive.storage_object.filter(in_directory__isnull=True)
-        dirs = handle_directory_depth(objects)
-        if dirs:
-            return ObjectDetailSerializer(dirs, many=True).data
+        if objects:
+            dirs = handle_directory_depth(objects)
+            if dirs:
+                return ObjectDetailSerializer(dirs, many=True).data
 
         return None
 

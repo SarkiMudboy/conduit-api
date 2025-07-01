@@ -8,10 +8,10 @@ from .base import *  # noqa
 load_dotenv(".env.local")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-DEBUG = os.getenv("DEBUG", True)
+DEBUG = os.getenv("DEBUG", 1)
 
 ALLOWED_HOSTS = ["*"]
-CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
+# CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = ("http://localhost:5173", "http://localhost:5173")
 CORS_ALLOW_CREDENTIALS = True

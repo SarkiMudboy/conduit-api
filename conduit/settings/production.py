@@ -6,24 +6,30 @@ from .base import *  # noqa
 
 load_dotenv(".env.prod")
 
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = os.getenv("DEBUG", 0)
 
 SECRET_KEY = os.getenv("SECRET_KEY")  # noqa
 if not SECRET_KEY:
     raise ValueError("SECRET KEY must be set")
 
-ALLOWED_HOSTS = []  # add this when ready!
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "52.91.27.115",
+    "conduit-app.netlify.app",
+]  # add this when ready!
 
 
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = "DENY"
-SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+# SECURE_SSL_REDIRECT = True
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# SECURE_HSTS_SECONDS = 31536000  # 1 year
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+# SECURE_CONTENT_TYPE_NOSNIFF = True
+# SECURE_BROWSER_XSS_FILTER = True
+# X_FRAME_OPTIONS = "DENY"
+# SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 
 # Session and CSRF Security
@@ -38,14 +44,14 @@ CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
 # Database Configuration
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "postgres"),  # noqa
-        "USER": os.getenv("DB_USER"),  # noqa
-        "PASSWORD": os.getenv("DB_PASSWORD"),  # noqa
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": os.getenv("POSTGRES_DB", "postgres"),  # noqa
+        "USER": os.getenv("POSTGRES_USER"),  # noqa
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),  # noqa
         "HOST": os.getenv("DB_HOST"),  # noqa
         "PORT": os.getenv("DB_PORT", "5432"),  # noqa
         "OPTIONS": {
-            "sslmode": "require",
+            "sslmode": "disable",
             "connect_timeout": 20,
         },
         "CONN_MAX_AGE": 300,  # Connection pooling
@@ -53,23 +59,23 @@ DATABASES = {
 }
 
 # Cache Configuration (Redis on ElastiCache)
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://redis:6379",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "CONNECTION_POOL_KWARGS": {
-                "max_connections": 50,
-                "retry_on_timeout": True,
-            },
-            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-            "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
-        },
-        "KEY_PREFIX": "django_cache",
-        "TIMEOUT": 300,  # 5 minutes default
-    }
-}
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://redis:6379",
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#             "CONNECTION_POOL_KWARGS": {
+#                 "max_connections": 50,
+#                 "retry_on_timeout": True,
+#             },
+#             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+#             "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
+#         },
+#         "KEY_PREFIX": "django_cache",
+#         "TIMEOUT": 300,  # 5 minutes default
+#     }
+# }
 
 
 # Celery Configuration
@@ -184,7 +190,7 @@ HEALTH_CHECK = {
 if "corsheaders" in INSTALLED_APPS:  # noqa
     CORS_ALLOWED_ORIGINS = [
         "https://conduit.netlify.app",
-        "https://conduit.netlify.app/",
+        "http://localhost:5173",
     ]
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = (

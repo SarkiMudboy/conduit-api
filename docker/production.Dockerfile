@@ -33,6 +33,7 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y \
     libpq5 \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -r conduituser && \
@@ -59,6 +60,9 @@ USER conduituser
 
 # Expose the application port
 EXPOSE 8000
+
+# format sh file for windows line endings
+RUN dos2unix /conduit/entrypoint.prod.sh
 
 # Make entry file executable
 RUN chmod +x  /conduit/entrypoint.prod.sh

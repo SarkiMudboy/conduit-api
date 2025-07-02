@@ -12,32 +12,18 @@ SECRET_KEY = os.getenv("SECRET_KEY")  # noqa
 if not SECRET_KEY:
     raise ValueError("SECRET KEY must be set")
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "0.0.0.0",
-    "52.91.27.115",
-    "conduit-app.netlify.app",
-]  # add this when ready!
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
 
-
-# SECURE_SSL_REDIRECT = True
-# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-# SECURE_HSTS_SECONDS = 31536000  # 1 year
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
-# SECURE_CONTENT_TYPE_NOSNIFF = True
-# SECURE_BROWSER_XSS_FILTER = True
-# X_FRAME_OPTIONS = "DENY"
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 
 # Session and CSRF Security
-# SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = True
-# SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
-# SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
 
@@ -89,8 +75,6 @@ CELERY_ENABLE_UTC = True
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
-# CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-# CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
 
 # Static Files Configuration
 STATIC_URL = "/static/"
@@ -99,18 +83,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # noqa
 # Media Files Configuration
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")  # noqa
-
-
-# if os.getenv("USE_S3") == "True":
-#     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-#     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-#     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-#     AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
-#     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-#     AWS_DEFAULT_ACL = "public-read"
-#     AWS_S3_OBJECT_PARAMETERS = {
-#         "CacheControl": "max-age=86400",
-#     }
 
 
 # setup email...
@@ -186,12 +158,8 @@ HEALTH_CHECK = {
     "MEMORY_MIN": 100,  # in MB
 }
 
-# CORS Configuration (if you have a frontend)
 if "corsheaders" in INSTALLED_APPS:  # noqa
-    CORS_ALLOWED_ORIGINS = [
-        "https://conduit.netlify.app",
-        "http://localhost:5173",
-    ]
+    CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS").split(",")
     CORS_ALLOW_CREDENTIALS = True
     CORS_ALLOW_HEADERS = (
         "Origin",
@@ -220,8 +188,10 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 
-BASE_APP_URL = os.getenv("BASE_APP_URL", "http://localhost:8000")
+BASE_APP_URL = os.getenv("BASE_APP_URL", "https://conduit.dedyn.io")
 
 GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID")
 GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET")
-GITHUB_OAUTH_CALLBACK_URL = f"{BASE_APP_URL}/api/v1/users/oauth/github/callback/"
+GITHUB_OAUTH_CALLBACK_URL = (
+    f"{BASE_APP_URL}/api/v1/users/oauth/github/callback/"
+)

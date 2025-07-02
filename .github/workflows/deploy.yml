@@ -28,10 +28,10 @@ jobs:
             sudo docker-compose -f production.compose.yml down
 
             echo "Removing old image..."
-            docker rmi adinoyi/conduit:latest || true
+            sudo docker rmi adinoyi/conduit:latest || true
 
             echo "Pulling latest image..."
-            docker pull adinoyi/conduit:latest
+            sudo docker pull adinoyi/conduit:latest
 
             echo "Starting containers..."
             sudo docker-compose -f production.compose.yml up -d

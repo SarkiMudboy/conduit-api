@@ -55,7 +55,9 @@ User = get_user_model()
 @require_http_methods(["GET"])
 def set_csrf_token(request: HttpRequest) -> JsonResponse:
     csrf_token = get_token(request)
-    return JsonResponse({"message": "CSRF token is set", "csrfToken": csrf_token})
+    return JsonResponse(
+        {"message": "CSRF token is set", "csrfToken": csrf_token}
+    )
 
 
 class SignUpView(generics.GenericAPIView):
@@ -111,7 +113,9 @@ class UserRetrieveUpdateDestroyView(
 
         user = self.get_object()
         partial = kwargs.pop("partial", False)
-        serializer = self.serializer_class(user, data=request.data, partial=partial)
+        serializer = self.serializer_class(
+            user, data=request.data, partial=partial
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -136,7 +140,9 @@ class UserSearchView(ListModelMixin, viewsets.GenericViewSet):
     def get_queryset(self) -> list:
         key = self.request.GET.get(self.lookup_url_kwarg)
         if key and len(key) > 3:
-            return self.queryset.filter(Q(email__icontains=key) | Q(tag__icontains=key))
+            return self.queryset.filter(
+                Q(email__icontains=key) | Q(tag__icontains=key)
+            )
         return []
 
 
@@ -217,7 +223,7 @@ class GithubOAuthCallbackView(generics.GenericAPIView):
         user = serializer.save()
         tokens = serializer.get_token(user)
         return parse_redirect_response(
-            tokens=tokens, location="http://localhost:5173/files"
+            tokens=tokens, location=f"{settings.BASE_CLIENT_URL}/files"
         )
 
 
@@ -269,14 +275,18 @@ class PasswordView(viewsets.GenericViewSet):
         # TO DO: Add a method that returns {'email': email, 'token': get_email_token()}
         return Response(data, status=status.HTTP_200_OK)
 
-    def confirm_otp(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+    def confirm_otp(
+        self, request: HttpRequest, *args, **kwargs
+    ) -> HttpResponse:
         otp = self.get_otp()
         serializer = ConfirmOTPSerializer(otp, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
-    def reset_password(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+    def reset_password(
+        self, request: HttpRequest, *args, **kwargs
+    ) -> HttpResponse:
         user = self.get_object()
         serializer = ChangePasswordSerializer(user, data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -293,7 +303,9 @@ class AppTokenRefreshView(TokenRefreshView):
     ):
 
         if response.data.get("access"):
-            response.set_cookie(**set_token_cookie("access", response.data["access"]))
+            response.set_cookie(
+                **set_token_cookie("access", response.data["access"])
+            )
             del response.data["access"]
         return super().finalize_response(request, response, *args, **kwargs)
 

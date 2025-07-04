@@ -177,7 +177,9 @@ REST_FRAMEWORK = {
 }
 
 BASE_APP_URL = os.getenv("BASE_APP_URL", "https://conduit.dedyn.io")
-
+BASE_CLIENT_URL = os.getenv(
+    "BASE_CLIENT_URL", "https://conduit-app.netlify.app"
+)
 GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID")
 GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET")
 GITHUB_OAUTH_CALLBACK_URL = (

@@ -43,24 +43,13 @@ DATABASES = {
     }
 }
 
-# Cache Configuration (Redis on ElastiCache)
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": "redis://redis:6379",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-#             "CONNECTION_POOL_KWARGS": {
-#                 "max_connections": 50,
-#                 "retry_on_timeout": True,
-#             },
-#             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-#             "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
-#         },
-#         "KEY_PREFIX": "django_cache",
-#         "TIMEOUT": 300,  # 5 minutes default
-#     }
-# }
+# Cache config
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://redis:6379",
+    }
+}
 
 
 # Celery Configuration
@@ -191,4 +180,6 @@ BASE_APP_URL = os.getenv("BASE_APP_URL", "https://conduit.dedyn.io")
 
 GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID")
 GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET")
-GITHUB_OAUTH_CALLBACK_URL = f"{BASE_APP_URL}/api/v1/users/oauth/github/callback/"
+GITHUB_OAUTH_CALLBACK_URL = (
+    f"{BASE_APP_URL}/api/v1/users/oauth/github/callback/"
+)

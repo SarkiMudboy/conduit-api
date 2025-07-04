@@ -16,6 +16,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.http.request import HttpRequest
 from django.http.response import Http404, HttpResponse
+from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
@@ -53,7 +54,8 @@ User = get_user_model()
 @ensure_csrf_cookie
 @require_http_methods(["GET"])
 def set_csrf_token(request: HttpRequest) -> JsonResponse:
-    return JsonResponse({"message": "CSRFtoken is set"})
+    csrf_token = get_token(request)
+    return JsonResponse({"message": "CSRF token is set", "csrfToken": csrf_token})
 
 
 class SignUpView(generics.GenericAPIView):

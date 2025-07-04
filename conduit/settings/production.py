@@ -23,6 +23,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "None"
+# CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(",")
 
 # Database Configuration
@@ -190,6 +191,4 @@ BASE_APP_URL = os.getenv("BASE_APP_URL", "https://conduit.dedyn.io")
 
 GITHUB_OAUTH_CLIENT_ID = os.getenv("GITHUB_OAUTH_CLIENT_ID")
 GITHUB_OAUTH_CLIENT_SECRET = os.getenv("GITHUB_OAUTH_CLIENT_SECRET")
-GITHUB_OAUTH_CALLBACK_URL = (
-    f"{BASE_APP_URL}/api/v1/users/oauth/github/callback/"
-)
+GITHUB_OAUTH_CALLBACK_URL = f"{BASE_APP_URL}/api/v1/users/oauth/github/callback/"

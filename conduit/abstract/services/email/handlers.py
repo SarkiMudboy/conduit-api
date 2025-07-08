@@ -11,7 +11,7 @@ CHARSET = "UTF-8"
 
 
 class BaseEmailHandler:
-    environment = os.getenv("DJANGO_SETTINGS_MODULE", "conduit.settings")
+    environment = os.getenv("DJANGO_SETTINGS_MODULE", "settings.local")
     env = environment.split(".")[1]
 
 
@@ -22,9 +22,9 @@ class EmailHandlerFactory(object):
         base_class = BaseEmailHandler()
 
         match base_class.env:
-            case "develop" | "testing" | "settings":
+            case "local" | "testing":
                 handler = SMTPHandler()
-            case "prod":
+            case "production":
                 handler = SESEmailHandler()
             case _:
                 return
@@ -37,7 +37,7 @@ class SESEmailHandler(BaseEmailHandler):
     REQUEST = HttpRequest()
     file: Tuple[str] = None
 
-    def send_mail(self, email_data: EmailData) -> Dict[str, Any]:
+    def send_email(self, email_data: EmailData) -> Dict[str, Any]:
 
         email_args = dict(
             Destination={
@@ -60,13 +60,17 @@ class SESEmailHandler(BaseEmailHandler):
                 "Html": {
                     "Charset": CHARSET,
                     "Data": render_to_string(
-                        email_data["template"], email_data["context"], self.REQUEST
+                        email_data["template"],
+                        email_data["context"],
+                        self.REQUEST,
                     ),
                 },
                 "Text": {
                     "Charset": CHARSET,
                     "Data": render_to_string(
-                        email_data["template"], email_data["context"], self.REQUEST
+                        email_data["template"],
+                        email_data["context"],
+                        self.REQUEST,
                     ),
                 },
             },
